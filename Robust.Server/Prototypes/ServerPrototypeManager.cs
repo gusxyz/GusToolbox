@@ -8,6 +8,7 @@ using Robust.Shared.Log;
 using Robust.Shared.Network;
 using Robust.Shared.Network.Messages;
 using Robust.Shared.Prototypes;
+using Robust.Shared.Utility;
 
 namespace Robust.Server.Prototypes
 {
@@ -53,7 +54,20 @@ namespace Robust.Server.Prototypes
         {
             LoadDirectory(new("/EnginePrototypes/"), changed: changed);
             LoadDirectory(_server.Options.PrototypeDirectory, changed: changed);
+            foreach (var prototypeDirectory in _server.Options.OtherPrototypeDirectories)
+            {
+                Sawmill.Debug("Server: Trying to load from " + prototypeDirectory);
+                LoadDirectory(prototypeDirectory, changed: changed);
+            }
             ResolveResults();
+        }
+
+        public override void AddDirectory(string path)
+        {
+            if (path == string.Empty)
+                return;
+            var resPath = new ResPath(path);
+            _server.Options.OtherPrototypeDirectories.Add(resPath);
         }
     }
 }

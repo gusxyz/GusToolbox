@@ -316,6 +316,8 @@ namespace Robust.Shared.Prototypes
         /// <inheritdoc />
         public abstract void LoadDefaultPrototypes(Dictionary<Type, HashSet<string>>? changed = null);
 
+        public abstract void AddDirectory(string path);
+
         private int SortPrototypesByPriority(Type a, Type b)
         {
             return _kindPriorities[b].CompareTo(_kindPriorities[a]);

@@ -187,6 +187,7 @@ namespace Robust.Client
 
             _reflectionManager.Initialize();
             _prototypeManager.Initialize();
+            _prototypeManager.AddDirectory(_configurationManager.GetCVar(CVars.OtherPrototypesDirectory));
             _prototypeManager.LoadDefaultPrototypes();
             _xamlProxyManager.Initialize();
             _xamlHotReloadManager.Initialize();

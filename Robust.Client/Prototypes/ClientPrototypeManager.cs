@@ -46,7 +46,20 @@ namespace Robust.Client.Prototypes
         {
             LoadDirectory(new("/EnginePrototypes/"), changed: changed);
             LoadDirectory(_controller.Options.PrototypeDirectory, changed: changed);
+            foreach (var prototypeDirectory in _controller.Options.OtherPrototypeDirectories)
+            {
+                Sawmill.Debug("Client: Trying to load from " + prototypeDirectory);
+                LoadDirectory(prototypeDirectory, changed: changed);
+            }
             ResolveResults();
+        }
+
+        public override void AddDirectory(string path)
+        {
+            if (path == string.Empty)
+                return;
+            var resPath = new ResPath(path);
+            _controller.Options.OtherPrototypeDirectories.Add(resPath);
         }
 
         private void WindowFocusedChanged(WindowFocusedEventArgs args)

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Robust.Shared;
 using Robust.Shared.Utility;
 
@@ -35,6 +36,11 @@ namespace Robust.Server
         ///     Directory to load all prototypes from.
         /// </summary>
         public ResPath PrototypeDirectory { get; init; } = new(@"/Prototypes");
+
+        /// <summary>
+        ///     Directory to load other prototypes from.
+        /// </summary>
+        public HashSet<ResPath> OtherPrototypeDirectories { get; init; } = new HashSet<ResPath>();
 
         /// <summary>
         ///     Whether to disable mounting the "Resources/" folder on FULL_RELEASE.

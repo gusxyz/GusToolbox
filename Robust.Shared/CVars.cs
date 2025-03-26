@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using Lidgren.Network;
 using Robust.Shared.Audio;
@@ -1868,5 +1869,11 @@ namespace Robust.Shared
         /// </summary>
         public static readonly CVarDef<int> ToolshedNearbyEntitiesLimit =
             CVarDef.Create("toolshed.nearby_entities_limit", 5, CVar.SERVER | CVar.REPLICATED);
+
+        /*
+         * MULTIPROTO
+         */
+        public static readonly CVarDef<string> OtherPrototypesDirectory =
+            CVarDef.Create("multiproto.otherdirectory", string.Empty, CVar.REPLICATED);
     }
 }

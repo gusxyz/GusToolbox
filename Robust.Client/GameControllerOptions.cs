@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Robust.Shared;
 using Robust.Shared.Utility;
 
@@ -54,9 +55,14 @@ namespace Robust.Client
         public ResPath AssemblyDirectory { get; init; } = new(@"/Assemblies/");
 
         /// <summary>
-        ///     Directory to load all prototypes from.
+        ///     Directory to load main prototypes from.
         /// </summary>
         public ResPath PrototypeDirectory { get; init; } = new(@"/Prototypes/");
+
+        /// <summary>
+        ///     Directory to load other prototypes from.
+        /// </summary>
+        public HashSet<ResPath> OtherPrototypeDirectories { get; init; } = new HashSet<ResPath>();
 
         /// <summary>
         /// Directory resource path containing window icons to load.

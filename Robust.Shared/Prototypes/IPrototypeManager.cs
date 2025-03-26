@@ -283,6 +283,8 @@ public interface IPrototypeManager
     /// <param name="loaded">Dictionary that will be filled with all the loaded prototypes.</param>
     void LoadDefaultPrototypes(Dictionary<Type, HashSet<string>>? loaded = null);
 
+    void AddDirectory(string path);
+
     /// <summary>
     /// Call this when operations adding new prototypes are done.
     /// This will handle prototype inheritance, instance creation, and update entity categories.
