@@ -13,6 +13,7 @@ internal sealed partial class WebViewManagerCef
     private const string BaseCacheName = "cef_cache";
     private const string LockFileName = "robust.lock";
     private FileStream? _lockFileStream;
+    // This probably shouldn't be a cvar because the only reason you'd need it change for legit just botting the game
     private const int MaxAttempts = 100;
 
     private string FindAndLockCacheDirectory(WritableDirProvider userData)
@@ -116,7 +117,7 @@ internal sealed partial class WebViewManagerCef
             return false;
         }
         // I'd love to expose what process is using the file, but it's all like P/Invoke stuff therefore windows only
-        // Passing the whole exception over is a meh.
+        // Passing the whole exception over is also meh.
         catch (IOException)
         {
             return true;
