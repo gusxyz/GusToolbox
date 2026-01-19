@@ -89,14 +89,17 @@ public sealed class RobustSharedPackaging
         HashSet<string> ignoreSet,
         CancellationToken cancel = default)
     {
-        var dirs = Directory.GetDirectories(Path.Combine(contentDir, "Modules"));
-        foreach (var dir in dirs)
-        {
-            var resourcesPath = Path.Combine(dir, "Resources");
-            if (!Directory.Exists(resourcesPath))
-                continue;
-            DoResourceCopy(resourcesPath, pass, ignoreSet, "", cancel);
-        }
+        var modulePath = Path.Combine(contentDir, "Modules");
+        if (!Directory.Exists(modulePath))
+            return Task.CompletedTask;
+        Parallel.ForEach(Directory.GetDirectories(modulePath),
+            dir=>
+            {
+                var resourcesPath = Path.Combine(dir, "Resources");
+                if (!Directory.Exists(resourcesPath))
+                    return;
+                DoResourceCopy(resourcesPath, pass, ignoreSet, "", cancel);
+            });
         return Task.CompletedTask;
     }
 

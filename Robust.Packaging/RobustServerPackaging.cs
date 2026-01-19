@@ -28,11 +28,12 @@ public sealed class RobustServerPackaging
         CancellationToken cancel = default)
     {
         var ignoreSet = ServerIgnoresResources.Union(RobustSharedPackaging.SharedIgnoredResources).ToHashSet();
+        var sharedIgnoreSet = ignoreSet.Union(additionalIgnoredResources).ToHashSet();
 
         await RobustSharedPackaging.DoResourceCopy(
             Path.Combine(contentDir, "Resources"),
             pass,
-            ignoreSet.Union(additionalIgnoredResources).ToHashSet(),
+            sharedIgnoreSet,
             cancel: cancel);
 
         await RobustSharedPackaging.DoResourceCopy(
@@ -41,6 +42,6 @@ public sealed class RobustServerPackaging
             ignoreSet,
             cancel: cancel);
 
-        await RobustSharedPackaging.DoModularResourceCopy(contentDir, pass, ignoreSet.Union(additionalIgnoredResources).ToHashSet(), cancel);
+        await RobustSharedPackaging.DoModularResourceCopy(contentDir, pass, sharedIgnoreSet, cancel);
     }
 }
