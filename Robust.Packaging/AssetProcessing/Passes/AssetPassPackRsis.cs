@@ -49,16 +49,13 @@ public sealed class AssetPassPackRsis : AssetPass
         // .rsi/*.png
         var matchPng = RegexPng.Match(file.Path);
         if (!matchPng.Success) return AssetFileAcceptResult.Pass;
+        lock (_foundRsis)
         {
-            lock (_foundRsis)
-            {
-                var dat = _foundRsis.GetOrNew(matchPng.Groups[1].Value);
-                if (dat.StatesFound.TryAdd(matchPng.Groups[2].Value, file)) return AssetFileAcceptResult.Consumed;
-                dat.StatesFound[matchPng.Groups[2].Value] = file;
-                return AssetFileAcceptResult.Consumed;
-            }
+            var dat = _foundRsis.GetOrNew(matchPng.Groups[1].Value);
+            if (dat.StatesFound.TryAdd(matchPng.Groups[2].Value, file)) return AssetFileAcceptResult.Consumed;
+            dat.StatesFound[matchPng.Groups[2].Value] = file;
+            return AssetFileAcceptResult.Consumed;
         }
-
     }
 
     protected override void AcceptFinished()
