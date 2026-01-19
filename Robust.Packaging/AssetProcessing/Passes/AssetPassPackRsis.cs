@@ -18,7 +18,6 @@ public sealed class AssetPassPackRsis : AssetPass
 
     private static readonly Regex RegexMetaJson = new(@"^(.+)\.rsi/meta\.json$");
     private static readonly Regex RegexPng = new(@"^(.+)\.rsi/(.+)\.png$");
-    private static readonly object ConsoleLock = new object();
 
     private readonly Configuration _imageConfiguration;
 
