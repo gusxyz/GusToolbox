@@ -29,10 +29,9 @@ public sealed class DropShadowTag : IMarkupTagHandler
 
     private static Color ResolveColor(MarkupNode node, Color fallback)
     {
-        if (node.Value.TryGetColor(out var color))
-            return color.Value;
-
-        if (node.Attributes.TryGetValue("color", out var colorAttr) && colorAttr.TryGetColor(out color))
+        if (node.Value.TryGetColor(out var color)
+            || node.Attributes.TryGetValue("color", out var colorAttr)
+            && colorAttr.TryGetColor(out color))
             return color.Value;
 
         return fallback;

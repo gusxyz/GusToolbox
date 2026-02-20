@@ -34,32 +34,24 @@ namespace Robust.Client.Graphics
         Texture? GetCharTexture(
             Rune codePoint,
             float scale,
-            int strokeThicknessFixed = 0,
-            FontStrokeLineCap lineCap = FontStrokeLineCap.Round,
-            FontStrokeLineJoin lineJoin = FontStrokeLineJoin.Round);
+            FontStrokeStyleFixed strokeStyle = default);
 
         Texture? GetCharTexture(
             char chr,
             float scale,
-            int strokeThicknessFixed = 0,
-            FontStrokeLineCap lineCap = FontStrokeLineCap.Round,
-            FontStrokeLineJoin lineJoin = FontStrokeLineJoin.Round) =>
-            GetCharTexture((Rune) chr, scale, strokeThicknessFixed, lineCap, lineJoin);
+            FontStrokeStyleFixed strokeStyle = default) =>
+            GetCharTexture((Rune) chr, scale, strokeStyle);
 
         CharMetrics? GetCharMetrics(
             Rune codePoint,
             float scale,
-            int strokeThicknessFixed = 0,
-            FontStrokeLineCap lineCap = FontStrokeLineCap.Round,
-            FontStrokeLineJoin lineJoin = FontStrokeLineJoin.Round);
+            FontStrokeStyleFixed strokeStyle = default);
 
         CharMetrics? GetCharMetrics(
             char chr,
             float scale,
-            int strokeThicknessFixed = 0,
-            FontStrokeLineCap lineCap = FontStrokeLineCap.Round,
-            FontStrokeLineJoin lineJoin = FontStrokeLineJoin.Round) =>
-            GetCharMetrics((Rune) chr, scale, strokeThicknessFixed, lineCap, lineJoin);
+            FontStrokeStyleFixed strokeStyle = default) =>
+            GetCharMetrics((Rune) chr, scale, strokeStyle);
 
         int GetAscent(float scale);
         int GetDescent(float scale);

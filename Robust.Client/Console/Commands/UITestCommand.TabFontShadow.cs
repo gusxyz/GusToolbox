@@ -174,18 +174,10 @@ internal sealed partial class UITestControl
                 var strokeThicknessMarkup = strokeThickness.ToString("0.##", CultureInfo.InvariantCulture);
                 var shadowX = (int) shadowXSlider.Value;
                 var shadowY = (int) shadowYSlider.Value;
-                var lineCapMarkup = lineCapButton.SelectedId switch
-                {
-                    (int) FontStrokeLineCap.Butt => "butt",
-                    (int) FontStrokeLineCap.Square => "square",
-                    _ => "round"
-                };
-                var lineJoinMarkup = lineJoinButton.SelectedId switch
-                {
-                    (int) FontStrokeLineJoin.Bevel => "bevel",
-                    (int) FontStrokeLineJoin.Miter => "miter",
-                    _ => "round"
-                };
+                var lineCap = (FontStrokeLineCap) lineCapButton.SelectedId;
+                var lineJoin = (FontStrokeLineJoin) lineJoinButton.SelectedId;
+                var lineCapMarkup = lineCap.ToString().ToLowerInvariant();
+                var lineJoinMarkup = lineJoin.ToString().ToLowerInvariant();
 
                 plain.SetMessage(FormattedMessage.FromMarkupOrThrow($"[color=#f5f5f5]Plain: {previewText}[/color]"));
                 shadow.SetMessage(

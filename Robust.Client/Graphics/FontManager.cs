@@ -126,11 +126,12 @@ namespace Robust.Client.Graphics
             ScaledFontData scaled,
             float scale,
             uint glyph,
-            int strokeThicknessFixed = 0,
-            FontStrokeLineCap lineCap = FontStrokeLineCap.Round,
-            FontStrokeLineJoin lineJoin = FontStrokeLineJoin.Round)
+            FontStrokeStyleFixed strokeStyle = default)
         {
-            var stroke = Math.Max(strokeThicknessFixed, 0);
+            var stroke = Math.Max(strokeStyle.ThicknessFixed, 0);
+            var lineCap = strokeStyle.LineCap;
+            var lineJoin = strokeStyle.LineJoin;
+
             if (stroke == 0)
             {
                 lineCap = FontStrokeLineCap.Round;
@@ -369,16 +370,14 @@ namespace Robust.Client.Graphics
             public Texture? GetCharTexture(
                 Rune codePoint,
                 float scale,
-                int strokeThicknessFixed = 0,
-                FontStrokeLineCap lineCap = FontStrokeLineCap.Round,
-                FontStrokeLineJoin lineJoin = FontStrokeLineJoin.Round)
+                FontStrokeStyleFixed strokeStyle = default)
             {
                 var glyph = GetGlyph(codePoint);
                 if (glyph == 0)
                     return null;
 
                 var scaled = GetScaleDatum(scale);
-                var glyphInfo = _fontManager.EnsureGlyphCached(this, scaled, scale, glyph, strokeThicknessFixed, lineCap, lineJoin);
+                var glyphInfo = _fontManager.EnsureGlyphCached(this, scaled, scale, glyph, strokeStyle);
 
                 return glyphInfo.Texture;
             }
@@ -386,9 +385,7 @@ namespace Robust.Client.Graphics
             public CharMetrics? GetCharMetrics(
                 Rune codePoint,
                 float scale,
-                int strokeThicknessFixed = 0,
-                FontStrokeLineCap lineCap = FontStrokeLineCap.Round,
-                FontStrokeLineJoin lineJoin = FontStrokeLineJoin.Round)
+                FontStrokeStyleFixed strokeStyle = default)
             {
                 var glyph = GetGlyph(codePoint);
                 if (glyph == 0)
@@ -397,7 +394,7 @@ namespace Robust.Client.Graphics
                 }
 
                 var scaled = GetScaleDatum(scale);
-                var info = _fontManager.EnsureGlyphCached(this, scaled, scale, glyph, strokeThicknessFixed, lineCap, lineJoin);
+                var info = _fontManager.EnsureGlyphCached(this, scaled, scale, glyph, strokeStyle);
 
                 return info.Metrics;
             }

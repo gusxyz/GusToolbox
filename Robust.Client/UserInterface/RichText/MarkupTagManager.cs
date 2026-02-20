@@ -29,7 +29,7 @@ public sealed class MarkupTagManager
         new HeadingTag(),
         new ItalicTag(),
         new StrokeTag()
-    }.ToDictionary(x => x.Name.ToLower(), x => x);
+    }.ToDictionary(x => x.Name.ToLowerInvariant(), x => x);
 
     /// <summary>
     /// A list of <see cref="IMarkupTag"/> types that shouldn't be instantiated through reflection
@@ -57,7 +57,7 @@ public sealed class MarkupTagManager
                 continue;
 
             var instance = (IMarkupTagHandler) _sandboxHelper.CreateInstance(type);
-            _markupTagTypes[instance.Name.ToLower()] = instance;
+            _markupTagTypes[instance.Name.ToLowerInvariant()] = instance;
         }
 
         foreach (var tag in _markupTagTypes.Values)
@@ -74,7 +74,7 @@ public sealed class MarkupTagManager
 
     public IMarkupTagHandler? GetMarkupTagHandler(string name)
     {
-        return _markupTagTypes.GetValueOrDefault(name);
+        return _markupTagTypes.GetValueOrDefault(name.ToLowerInvariant());
     }
 
     /// <summary>
@@ -86,7 +86,7 @@ public sealed class MarkupTagManager
     /// <returns></returns>
     public bool TryGetMarkupTagHandler(string name, Type[]? tagsAllowed, [NotNullWhen(true)] out IMarkupTagHandler? handler)
     {
-        if (_markupTagTypes.TryGetValue(name, out var markupTag)
+        if (_markupTagTypes.TryGetValue(name.ToLowerInvariant(), out var markupTag)
             // Using a whitelist prevents new tags from sneaking in.
             && (tagsAllowed == null || Array.IndexOf(tagsAllowed, markupTag.GetType()) != -1))
         {

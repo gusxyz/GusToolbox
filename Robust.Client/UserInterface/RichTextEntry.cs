@@ -265,14 +265,12 @@ namespace Robust.Client.UserInterface
                 var strokeThickness = 0f;
                 var strokeLineCap = FontStrokeLineCap.Round;
                 var strokeLineJoin = FontStrokeLineJoin.Round;
-                var hasStroke = context.StrokeColor.TryPeek(out var strokeColor) &&
-                                context.StrokeThickness.TryPeek(out strokeThickness)
-                                && strokeThickness > 0;
-                if (hasStroke)
-                {
-                    context.StrokeLineCap.TryPeek(out strokeLineCap);
-                    context.StrokeLineJoin.TryPeek(out strokeLineJoin);
-                }
+                var hasStroke = context.StrokeColor.TryPeek(out var strokeColor)
+                    && context.StrokeThickness.TryPeek(out strokeThickness)
+                    && context.StrokeLineCap.TryPeek(out strokeLineCap)
+                    && context.StrokeLineJoin.TryPeek(out strokeLineJoin)
+                    && strokeThickness > 0;
+                var strokeStyle = new FontStrokeStyle(strokeThickness, strokeLineCap, strokeLineJoin);
 
                 foreach (var rune in text.EnumerateRunes())
                 {
@@ -301,7 +299,7 @@ namespace Robust.Client.UserInterface
                                 baseLine,
                                 uiScale,
                                 strokeColor,
-                                new FontStrokeStyle(strokeThickness, strokeLineCap, strokeLineJoin));
+                                strokeStyle);
                     }
 
                     var advance = font.DrawChar(handle, rune, baseLine, uiScale, color);
