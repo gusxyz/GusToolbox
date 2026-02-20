@@ -39,7 +39,9 @@ END TEMPLATE-->
 
 ### New features
 
-*None yet*
+* If a sandbox error is caused by a compiler-generated method, the engine will now attempt to point out which using code is responsible.
+* Added `OrderedDictionary<TKey, TValue>` and `System.StringComparer` to the sandbox whitelist.
+* Added more overloads to `MapLoaderSystem` taking `TextReader`/`TextWriter` where appropriate.
 
 ### Bugfixes
 
@@ -47,7 +49,7 @@ END TEMPLATE-->
 
 ### Other
 
-*None yet*
+* Public APIs involving `System.Random` have been obsoleted. Use `IRobustRandom`/`RobustRandom` and such instead.
 
 ### Internal
 
@@ -64,6 +66,9 @@ END TEMPLATE-->
 
 * Added `ProfManager.Value` guard method.
 
+### Bugfixes
+
+* Fixed `ValidateMemberAnalyzer` taking a ridiculous amount of compile time.
 
 ### Other
 
