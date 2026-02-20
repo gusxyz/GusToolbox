@@ -14,27 +14,18 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace Robust.Client.Graphics
 {
-    internal sealed class FontManager : IFontManagerInternal
+    internal sealed class FontManager(IClyde clyde, ILogManager logManager) : IFontManagerInternal
     {
         private const int SheetWidth = 256;
         private const int SheetHeight = 256;
 
-        private readonly IClyde _clyde;
-        private readonly ISawmill _sawmill;
+        private readonly ISawmill _sawmill = logManager.GetSawmill("font");
+        private readonly Library _library = new();
 
         private uint _baseFontDpi = 96;
 
-        private readonly Library _library;
-
         private readonly Dictionary<(FontFaceHandle, int fontSize), FontInstanceHandle> _loadedInstances =
             new();
-
-        public FontManager(IClyde clyde, ILogManager logManager)
-        {
-            _clyde = clyde;
-            _library = new Library();
-            _sawmill = logManager.GetSawmill("font");
-        }
 
         public IFontFaceHandle Load(Stream stream, int index = 0)
         {
@@ -237,7 +228,7 @@ namespace Robust.Client.Graphics
 
             OwnedTexture GenSheet()
             {
-                var sheet = _clyde.CreateBlankTexture<A8>((SheetWidth, SheetHeight),
+                var sheet = clyde.CreateBlankTexture<A8>((SheetWidth, SheetHeight),
                     $"font-{face.FamilyName}-{instance.Size}-{(uint) (_baseFontDpi * scale)}-sheet{scaled.AtlasTextures.Count}");
                 scaled.AtlasTextures.Add(sheet);
                 return sheet;
@@ -325,35 +316,20 @@ namespace Robust.Client.Graphics
             return bitmapImage;
         }
 
-        private sealed class FontFaceHandle : IFontFaceHandle
+        private sealed class FontFaceHandle(Face face, IFontMemoryHandle memoryHandle) : IFontFaceHandle
         {
             // Keep this alive to avoid it being GC'd.
-            private readonly IFontMemoryHandle _memoryHandle;
-            public Face Face { get; }
-
-            public FontFaceHandle(Face face, IFontMemoryHandle memoryHandle)
-            {
-                _memoryHandle = memoryHandle;
-                Face = face;
-            }
+            private readonly IFontMemoryHandle _memoryHandle = memoryHandle;
+            public Face Face { get; } = face;
         }
 
         [PublicAPI]
-        private sealed class FontInstanceHandle : IFontInstanceHandle
+        private sealed class FontInstanceHandle(FontManager fontManager, int size, FontFaceHandle faceHandle) : IFontInstanceHandle
         {
-            public FontFaceHandle FaceHandle { get; }
-            public int Size { get; }
+            public FontFaceHandle FaceHandle { get; } = faceHandle;
+            public int Size { get; } = size;
             private readonly Dictionary<float, ScaledFontData> _scaledData = new();
-            private readonly FontManager _fontManager;
-            public readonly Dictionary<Rune, uint> GlyphMap;
-
-            public FontInstanceHandle(FontManager fontManager, int size, FontFaceHandle faceHandle)
-            {
-                GlyphMap = new Dictionary<Rune, uint>();
-                _fontManager = fontManager;
-                Size = size;
-                FaceHandle = faceHandle;
-            }
+            public readonly Dictionary<Rune, uint> GlyphMap = new();
 
             public void ClearSizeData()
             {
@@ -377,7 +353,7 @@ namespace Robust.Client.Graphics
                     return null;
 
                 var scaled = GetScaleDatum(scale);
-                var glyphInfo = _fontManager.EnsureGlyphCached(this, scaled, scale, glyph, strokeStyle);
+                var glyphInfo = fontManager.EnsureGlyphCached(this, scaled, scale, glyph, strokeStyle);
 
                 return glyphInfo.Texture;
             }
@@ -394,7 +370,7 @@ namespace Robust.Client.Graphics
                 }
 
                 var scaled = GetScaleDatum(scale);
-                var info = _fontManager.EnsureGlyphCached(this, scaled, scale, glyph, strokeStyle);
+                var info = fontManager.EnsureGlyphCached(this, scaled, scale, glyph, strokeStyle);
 
                 return info.Metrics;
             }
@@ -445,28 +421,20 @@ namespace Robust.Client.Graphics
                     return datum;
                 }
 
-                datum = _fontManager._generateScaledDatum(this, scale);
+                datum = fontManager._generateScaledDatum(this, scale);
                 _scaledData.Add(scale, datum);
                 return datum;
             }
         }
 
-        private sealed class ScaledFontData
+        private sealed class ScaledFontData(int ascent, int descent, int height, int lineHeight)
         {
-            public ScaledFontData(int ascent, int descent, int height, int lineHeight)
-            {
-                Ascent = ascent;
-                Descent = descent;
-                Height = height;
-                LineHeight = lineHeight;
-            }
-
-            public readonly List<OwnedTexture> AtlasTextures = new();
+            public readonly List<OwnedTexture> AtlasTextures = [];
             public readonly Dictionary<(uint Glyph, int StrokeThicknessFixed, FontStrokeLineCap LineCap, FontStrokeLineJoin LineJoin), GlyphInfo> GlyphInfos = new();
-            public readonly int Ascent;
-            public readonly int Descent;
-            public readonly int Height;
-            public readonly int LineHeight;
+            public readonly int Ascent = ascent;
+            public readonly int Descent = descent;
+            public readonly int Height = height;
+            public readonly int LineHeight = lineHeight;
 
             public int CurSheetX;
             public int CurSheetY;
