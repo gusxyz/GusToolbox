@@ -156,9 +156,83 @@ namespace Robust.Client.Graphics
 
         public Vector2 DrawString(Font font, Vector2 pos, ReadOnlySpan<char> str, float scale, Color color)
         {
+            return DrawStringInternal(font, pos, str, scale, color, null, null, null, default);
+        }
+
+        /// <summary>
+        ///     Draw a simple string with a configurable drop shadow.
+        /// </summary>
+        /// <remarks>
+        ///     This method is primarily intended for debug purposes and does not handle things like UI scaling.
+        /// </remarks>
+        /// <returns>
+        ///     The space taken up (horizontal and vertical) by the text.
+        /// </returns>
+        public Vector2 DrawString(
+            Font font,
+            Vector2 pos,
+            ReadOnlySpan<char> str,
+            float scale,
+            Color color,
+            Color shadowColor,
+            Vector2 shadowOffset)
+        {
+            return DrawStringInternal(font, pos, str, scale, color, shadowColor, shadowOffset, null, default);
+        }
+
+        /// <summary>
+        ///     Draw a simple string with a configurable stroke and optional drop shadow.
+        /// </summary>
+        /// <remarks>
+        ///     This method is primarily intended for debug purposes and does not handle things like UI scaling.
+        /// </remarks>
+        /// <returns>
+        ///     The space taken up (horizontal and vertical) by the text.
+        /// </returns>
+        public Vector2 DrawString(
+            Font font,
+            Vector2 pos,
+            ReadOnlySpan<char> str,
+            float scale,
+            Color color,
+            Color strokeColor,
+            float strokeThickness,
+            Color? shadowColor = null,
+            Vector2? shadowOffset = null)
+        {
+            return DrawString(font, pos, str, scale, color, strokeColor, new FontStrokeStyle(strokeThickness), shadowColor, shadowOffset);
+        }
+
+        public Vector2 DrawString(
+            Font font,
+            Vector2 pos,
+            ReadOnlySpan<char> str,
+            float scale,
+            Color color,
+            Color strokeColor,
+            FontStrokeStyle strokeStyle,
+            Color? shadowColor = null,
+            Vector2? shadowOffset = null)
+        {
+            return DrawStringInternal(font, pos, str, scale, color, shadowColor, shadowOffset, strokeColor, strokeStyle);
+        }
+
+        private Vector2 DrawStringInternal(
+            Font font,
+            Vector2 pos,
+            ReadOnlySpan<char> str,
+            float scale,
+            Color color,
+            Color? shadowColor,
+            Vector2? shadowOffset,
+            Color? strokeColor,
+            FontStrokeStyle strokeStyle)
+        {
             var advanceTotal = Vector2.Zero;
-            var baseLine = new Vector2(pos.X, font.GetAscent(scale) + pos.Y);
+            var baseLine = pos with { Y = font.GetAscent(scale) + pos.Y };
             var lineHeight = font.GetLineHeight(scale);
+            var resolvedStrokeStyle = strokeStyle with { Thickness = Math.Max(strokeStyle.Thickness, 0f) };
+            var resolvedShadowOffset = shadowOffset ?? Vector2.One;
 
             foreach (var rune in str.EnumerateRunes())
             {
@@ -170,11 +244,18 @@ namespace Robust.Client.Graphics
                     continue;
                 }
 
+                if (!Rune.IsWhiteSpace(rune))
+                {
+                    if (shadowColor is not null)
+                        font.DrawChar(this, rune, baseLine + resolvedShadowOffset, scale, shadowColor.Value);
+                    if (strokeColor is not null && resolvedStrokeStyle.Thickness > 0)
+                        font.DrawCharStroke(this, rune, baseLine, scale, strokeColor.Value, resolvedStrokeStyle);
+                }
+
                 var advance = font.DrawChar(this, rune, baseLine, scale, color);
                 advanceTotal.X += advance;
                 baseLine += new Vector2(advance, 0);
             }
-
             return advanceTotal;
         }
 

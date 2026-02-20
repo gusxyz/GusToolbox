@@ -31,10 +31,27 @@ namespace Robust.Client.Graphics
 
     internal interface IFontInstanceHandle
     {
-        Texture? GetCharTexture(Rune codePoint, float scale);
-        Texture? GetCharTexture(char chr, float scale) => GetCharTexture((Rune) chr, scale);
-        CharMetrics? GetCharMetrics(Rune codePoint, float scale);
-        CharMetrics? GetCharMetrics(char chr, float scale) => GetCharMetrics((Rune) chr, scale);
+        Texture? GetCharTexture(
+            Rune codePoint,
+            float scale,
+            FontStrokeStyleFixed strokeStyle = default);
+
+        Texture? GetCharTexture(
+            char chr,
+            float scale,
+            FontStrokeStyleFixed strokeStyle = default) =>
+            GetCharTexture((Rune) chr, scale, strokeStyle);
+
+        CharMetrics? GetCharMetrics(
+            Rune codePoint,
+            float scale,
+            FontStrokeStyleFixed strokeStyle = default);
+
+        CharMetrics? GetCharMetrics(
+            char chr,
+            float scale,
+            FontStrokeStyleFixed strokeStyle = default) =>
+            GetCharMetrics((Rune) chr, scale, strokeStyle);
 
         int GetAscent(float scale);
         int GetDescent(float scale);

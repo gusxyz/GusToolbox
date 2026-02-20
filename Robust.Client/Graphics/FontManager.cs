@@ -14,27 +14,18 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace Robust.Client.Graphics
 {
-    internal sealed class FontManager : IFontManagerInternal
+    internal sealed class FontManager(IClyde clyde, ILogManager logManager) : IFontManagerInternal
     {
         private const int SheetWidth = 256;
         private const int SheetHeight = 256;
 
-        private readonly IClyde _clyde;
-        private readonly ISawmill _sawmill;
+        private readonly ISawmill _sawmill = logManager.GetSawmill("font");
+        private readonly Library _library = new();
 
         private uint _baseFontDpi = 96;
 
-        private readonly Library _library;
-
         private readonly Dictionary<(FontFaceHandle, int fontSize), FontInstanceHandle> _loadedInstances =
             new();
-
-        public FontManager(IClyde clyde, ILogManager logManager)
-        {
-            _clyde = clyde;
-            _library = new Library();
-            _sawmill = logManager.GetSawmill("font");
-        }
 
         public IFontFaceHandle Load(Stream stream, int index = 0)
         {
@@ -121,78 +112,86 @@ namespace Robust.Client.Graphics
             return data;
         }
 
-        private GlyphInfo EnsureGlyphCached(FontInstanceHandle instance, ScaledFontData scaled, float scale, uint glyph)
+        private GlyphInfo EnsureGlyphCached(
+            FontInstanceHandle instance,
+            ScaledFontData scaled,
+            float scale,
+            uint glyph,
+            FontStrokeStyleFixed strokeStyle = default)
         {
-            // Check if already cached.
-            if (scaled.GlyphInfos.TryGetValue(glyph, out var info))
-                return info;
+            var stroke = Math.Max(strokeStyle.ThicknessFixed, 0);
+            var lineCap = strokeStyle.LineCap;
+            var lineJoin = strokeStyle.LineJoin;
 
+            if (stroke == 0)
+            {
+                lineCap = FontStrokeLineCap.Round;
+                lineJoin = FontStrokeLineJoin.Round;
+            }
+
+            var cacheKey = (glyph, stroke, lineCap, lineJoin);
+            // Check if already cached.
+            if (scaled.GlyphInfos.TryGetValue(cacheKey, out var info))
+                return info;
             info = new GlyphInfo();
 
             var face = instance.FaceHandle.Face;
             face.SetCharSize(0, instance.Size, 0, (uint) (_baseFontDpi * scale));
-            face.LoadGlyph(glyph, LoadFlags.Default, LoadTarget.Normal);
-            face.Glyph.RenderGlyph(RenderMode.Normal);
-
-            var glyphMetrics = face.Glyph.Metrics;
-            info.Metrics = new CharMetrics(glyphMetrics.HorizontalBearingX.ToInt32(),
-                glyphMetrics.HorizontalBearingY.ToInt32(),
-                glyphMetrics.HorizontalAdvance.ToInt32(),
-                glyphMetrics.Width.ToInt32(),
-                glyphMetrics.Height.ToInt32());
-
-            using var bitmap = face.Glyph.Bitmap;
-            if (bitmap.Pitch < 0)
+            if (stroke <= 0)
             {
-                throw new NotImplementedException();
+                face.LoadGlyph(glyph, LoadFlags.Default, LoadTarget.Normal);
+                face.Glyph.RenderGlyph(RenderMode.Normal);
+
+                var glyphMetrics = face.Glyph.Metrics;
+                info.Metrics = new CharMetrics(glyphMetrics.HorizontalBearingX.ToInt32(),
+                    glyphMetrics.HorizontalBearingY.ToInt32(),
+                    glyphMetrics.HorizontalAdvance.ToInt32(),
+                    glyphMetrics.Width.ToInt32(),
+                    glyphMetrics.Height.ToInt32());
+
+                using var bitmap = face.Glyph.Bitmap;
+                CacheBitmap(bitmap);
+            }
+            else
+            {
+                face.LoadGlyph(glyph, LoadFlags.Default | LoadFlags.NoBitmap, LoadTarget.Normal);
+
+                var glyphMetrics = face.Glyph.Metrics;
+                var advance = glyphMetrics.HorizontalAdvance.ToInt32();
+
+                using var sourceGlyph = face.Glyph.GetGlyph();
+                using var stroker = new Stroker(_library);
+                stroker.Set(stroke, ToSharpLineCap(lineCap), ToSharpLineJoin(lineJoin), Fixed16Dot16.FromInt32(0));
+
+                using var strokedGlyph = sourceGlyph.StrokeBorder(stroker, false, false);
+                strokedGlyph.ToBitmap(RenderMode.Normal, new FTVector26Dot6(0, 0), true);
+                var bitmapGlyph = strokedGlyph.ToBitmapGlyph();
+
+                using var bitmap = bitmapGlyph.Bitmap;
+                info.Metrics = new CharMetrics(
+                    bitmapGlyph.Left,
+                    bitmapGlyph.Top,
+                    advance,
+                    bitmap.Width,
+                    bitmap.Rows);
+                CacheBitmap(bitmap);
             }
 
-            if (bitmap.Pitch != 0)
+            scaled.GlyphInfos.Add(cacheKey, info);
+            return info;
+
+            void CacheBitmap(FTBitmap bitmap)
             {
-                Image<A8> img;
-                switch (bitmap.PixelMode)
+                if (bitmap.Pitch < 0)
                 {
-                    case PixelMode.Mono:
-                    {
-                        img = MonoBitMapToImage(bitmap);
-                        break;
-                    }
-
-                    case PixelMode.Gray:
-                    {
-                        ReadOnlySpan<A8> span;
-                        unsafe
-                        {
-                            span = new ReadOnlySpan<A8>((void*) bitmap.Buffer, bitmap.Pitch * bitmap.Rows);
-                        }
-
-                        img = new Image<A8>(bitmap.Width, bitmap.Rows);
-
-                        span.Blit(
-                            bitmap.Pitch,
-                            UIBox2i.FromDimensions(0, 0, bitmap.Pitch, bitmap.Rows),
-                            img,
-                            (0, 0));
-
-                        break;
-                    }
-
-                    case PixelMode.Gray2:
-                    case PixelMode.Gray4:
-                    case PixelMode.Lcd:
-                    case PixelMode.VerticalLcd:
-                    case PixelMode.Bgra:
-                        throw new NotImplementedException();
-                    default:
-                        throw new ArgumentOutOfRangeException();
+                    throw new NotImplementedException();
                 }
 
-                OwnedTexture sheet;
-                if (scaled.AtlasTextures.Count == 0)
-                    sheet = GenSheet();
-                else
-                    sheet = scaled.AtlasTextures[^1];
+                if (bitmap.Pitch == 0)
+                    return;
 
+                using var img = GlyphBitmapToImage(bitmap);
+                var sheet = scaled.AtlasTextures.Count == 0 ? GenSheet() : scaled.AtlasTextures[^1];
                 var (sheetW, sheetH) = sheet.Size;
 
                 if (sheetW - scaled.CurSheetX < img.Width)
@@ -214,30 +213,80 @@ namespace Robust.Client.Graphics
 
                 sheet.SetSubImage((scaled.CurSheetX, scaled.CurSheetY), img);
 
-                var atlasTexture = new AtlasTexture(
+                info.Texture = new AtlasTexture(
                     sheet,
                     UIBox2.FromDimensions(
                         scaled.CurSheetX,
                         scaled.CurSheetY,
-                        bitmap.Width,
-                        bitmap.Rows));
+                        img.Width,
+                        img.Height));
 
-                info.Texture = atlasTexture;
-
-                scaled.CurSheetMaxY = Math.Max(scaled.CurSheetMaxY, scaled.CurSheetY + bitmap.Rows);
+                scaled.CurSheetMaxY = Math.Max(scaled.CurSheetMaxY, scaled.CurSheetY + img.Height);
                 // +1 adds a pixel of horizontal padding, to avoid artifacts when aliasing
-                scaled.CurSheetX += bitmap.Width + 1;
+                scaled.CurSheetX += img.Width + 1;
             }
-
-            scaled.GlyphInfos.Add(glyph, info);
-            return info;
 
             OwnedTexture GenSheet()
             {
-                var sheet = _clyde.CreateBlankTexture<A8>((SheetWidth, SheetHeight),
+                var sheet = clyde.CreateBlankTexture<A8>((SheetWidth, SheetHeight),
                     $"font-{face.FamilyName}-{instance.Size}-{(uint) (_baseFontDpi * scale)}-sheet{scaled.AtlasTextures.Count}");
                 scaled.AtlasTextures.Add(sheet);
                 return sheet;
+            }
+        }
+
+        private static StrokerLineCap ToSharpLineCap(FontStrokeLineCap cap)
+        {
+            return cap switch
+            {
+                FontStrokeLineCap.Butt => StrokerLineCap.Butt,
+                FontStrokeLineCap.Square => StrokerLineCap.Square,
+                _ => StrokerLineCap.Round
+            };
+        }
+
+        private static StrokerLineJoin ToSharpLineJoin(FontStrokeLineJoin join)
+        {
+            return join switch
+            {
+                FontStrokeLineJoin.Bevel => StrokerLineJoin.Bevel,
+                FontStrokeLineJoin.Miter => StrokerLineJoin.MiterFixed,
+                _ => StrokerLineJoin.Round
+            };
+        }
+
+        private static Image<A8> GlyphBitmapToImage(FTBitmap bitmap)
+        {
+            switch (bitmap.PixelMode)
+            {
+                case PixelMode.Mono:
+                {
+                    return MonoBitMapToImage(bitmap);
+                }
+                case PixelMode.Gray:
+                {
+                    ReadOnlySpan<A8> span;
+                    unsafe
+                    {
+                        span = new ReadOnlySpan<A8>((void*) bitmap.Buffer, bitmap.Pitch * bitmap.Rows);
+                    }
+
+                    var img = new Image<A8>(bitmap.Width, bitmap.Rows);
+                    span.Blit(
+                        bitmap.Pitch,
+                        UIBox2i.FromDimensions(0, 0, bitmap.Pitch, bitmap.Rows),
+                        img,
+                        (0, 0));
+                    return img;
+                }
+                case PixelMode.Gray2:
+                case PixelMode.Gray4:
+                case PixelMode.Lcd:
+                case PixelMode.VerticalLcd:
+                case PixelMode.Bgra:
+                    throw new NotImplementedException();
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
 
@@ -264,39 +313,23 @@ namespace Robust.Client.Graphics
                     bitmapImage[x, y] = new A8(bit ? byte.MaxValue : byte.MinValue);
                 }
             }
-
             return bitmapImage;
         }
 
-        private sealed class FontFaceHandle : IFontFaceHandle
+        private sealed class FontFaceHandle(Face face, IFontMemoryHandle memoryHandle) : IFontFaceHandle
         {
             // Keep this alive to avoid it being GC'd.
-            private readonly IFontMemoryHandle _memoryHandle;
-            public Face Face { get; }
-
-            public FontFaceHandle(Face face, IFontMemoryHandle memoryHandle)
-            {
-                _memoryHandle = memoryHandle;
-                Face = face;
-            }
+            private readonly IFontMemoryHandle _memoryHandle = memoryHandle;
+            public Face Face { get; } = face;
         }
 
         [PublicAPI]
-        private sealed class FontInstanceHandle : IFontInstanceHandle
+        private sealed class FontInstanceHandle(FontManager fontManager, int size, FontFaceHandle faceHandle) : IFontInstanceHandle
         {
-            public FontFaceHandle FaceHandle { get; }
-            public int Size { get; }
+            public FontFaceHandle FaceHandle { get; } = faceHandle;
+            public int Size { get; } = size;
             private readonly Dictionary<float, ScaledFontData> _scaledData = new();
-            private readonly FontManager _fontManager;
-            public readonly Dictionary<Rune, uint> GlyphMap;
-
-            public FontInstanceHandle(FontManager fontManager, int size, FontFaceHandle faceHandle)
-            {
-                GlyphMap = new Dictionary<Rune, uint>();
-                _fontManager = fontManager;
-                Size = size;
-                FaceHandle = faceHandle;
-            }
+            public readonly Dictionary<Rune, uint> GlyphMap = new();
 
             public void ClearSizeData()
             {
@@ -310,19 +343,25 @@ namespace Robust.Client.Graphics
                 _scaledData.Clear();
             }
 
-            public Texture? GetCharTexture(Rune codePoint, float scale)
+            public Texture? GetCharTexture(
+                Rune codePoint,
+                float scale,
+                FontStrokeStyleFixed strokeStyle = default)
             {
                 var glyph = GetGlyph(codePoint);
                 if (glyph == 0)
                     return null;
 
                 var scaled = GetScaleDatum(scale);
-                var glyphInfo = _fontManager.EnsureGlyphCached(this, scaled, scale, glyph);
+                var glyphInfo = fontManager.EnsureGlyphCached(this, scaled, scale, glyph, strokeStyle);
 
                 return glyphInfo.Texture;
             }
 
-            public CharMetrics? GetCharMetrics(Rune codePoint, float scale)
+            public CharMetrics? GetCharMetrics(
+                Rune codePoint,
+                float scale,
+                FontStrokeStyleFixed strokeStyle = default)
             {
                 var glyph = GetGlyph(codePoint);
                 if (glyph == 0)
@@ -331,7 +370,7 @@ namespace Robust.Client.Graphics
                 }
 
                 var scaled = GetScaleDatum(scale);
-                var info = _fontManager.EnsureGlyphCached(this, scaled, scale, glyph);
+                var info = fontManager.EnsureGlyphCached(this, scaled, scale, glyph, strokeStyle);
 
                 return info.Metrics;
             }
@@ -382,28 +421,20 @@ namespace Robust.Client.Graphics
                     return datum;
                 }
 
-                datum = _fontManager._generateScaledDatum(this, scale);
+                datum = fontManager._generateScaledDatum(this, scale);
                 _scaledData.Add(scale, datum);
                 return datum;
             }
         }
 
-        private sealed class ScaledFontData
+        private sealed class ScaledFontData(int ascent, int descent, int height, int lineHeight)
         {
-            public ScaledFontData(int ascent, int descent, int height, int lineHeight)
-            {
-                Ascent = ascent;
-                Descent = descent;
-                Height = height;
-                LineHeight = lineHeight;
-            }
-
-            public readonly List<OwnedTexture> AtlasTextures = new();
-            public readonly Dictionary<uint, GlyphInfo> GlyphInfos = new();
-            public readonly int Ascent;
-            public readonly int Descent;
-            public readonly int Height;
-            public readonly int LineHeight;
+            public readonly List<OwnedTexture> AtlasTextures = [];
+            public readonly Dictionary<(uint Glyph, int StrokeThicknessFixed, FontStrokeLineCap LineCap, FontStrokeLineJoin LineJoin), GlyphInfo> GlyphInfos = new();
+            public readonly int Ascent = ascent;
+            public readonly int Descent = descent;
+            public readonly int Height = height;
+            public readonly int LineHeight = lineHeight;
 
             public int CurSheetX;
             public int CurSheetY;
