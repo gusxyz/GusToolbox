@@ -156,9 +156,71 @@ namespace Robust.Client.Graphics
 
         public Vector2 DrawString(Font font, Vector2 pos, ReadOnlySpan<char> str, float scale, Color color)
         {
+            return DrawStringInternal(font, pos, str, scale, color, null, null, null, 0);
+        }
+
+        /// <summary>
+        ///     Draw a simple string with a configurable drop shadow.
+        /// </summary>
+        /// <remarks>
+        ///     This method is primarily intended for debug purposes and does not handle things like UI scaling.
+        /// </remarks>
+        /// <returns>
+        ///     The space taken up (horizontal and vertical) by the text.
+        /// </returns>
+        public Vector2 DrawString(
+            Font font,
+            Vector2 pos,
+            ReadOnlySpan<char> str,
+            float scale,
+            Color color,
+            Color shadowColor,
+            Vector2 shadowOffset)
+        {
+            return DrawStringInternal(font, pos, str, scale, color, shadowColor, shadowOffset, null, 0);
+        }
+
+        /// <summary>
+        ///     Draw a simple string with a configurable stroke and optional drop shadow.
+        /// </summary>
+        /// <remarks>
+        ///     This method is primarily intended for debug purposes and does not handle things like UI scaling.
+        /// </remarks>
+        /// <returns>
+        ///     The space taken up (horizontal and vertical) by the text.
+        /// </returns>
+        public Vector2 DrawString(
+            Font font,
+            Vector2 pos,
+            ReadOnlySpan<char> str,
+            float scale,
+            Color color,
+            Color strokeColor,
+            int strokeThickness,
+            Color? shadowColor = null,
+            Vector2? shadowOffset = null)
+        {
+            return DrawStringInternal(font, pos, str, scale, color, shadowColor, shadowOffset, strokeColor, strokeThickness);
+        }
+
+        private Vector2 DrawStringInternal(
+            Font font,
+            Vector2 pos,
+            ReadOnlySpan<char> str,
+            float scale,
+            Color color,
+            Color? shadowColor,
+            Vector2? shadowOffset,
+            Color? strokeColor,
+            int strokeThickness)
+        {
             var advanceTotal = Vector2.Zero;
             var baseLine = new Vector2(pos.X, font.GetAscent(scale) + pos.Y);
             var lineHeight = font.GetLineHeight(scale);
+            var hasShadow = shadowColor.HasValue;
+            var hasStroke = strokeColor.HasValue && strokeThickness > 0;
+            var resolvedShadowOffset = shadowOffset ?? Vector2.One;
+            var resolvedStrokeThickness = Math.Max(strokeThickness, 0);
 
             foreach (var rune in str.EnumerateRunes())
             {
@@ -170,6 +232,19 @@ namespace Robust.Client.Graphics
                     continue;
                 }
 
+                if (!Rune.IsWhiteSpace(rune))
+                {
+                    if (hasShadow)
+                    {
+                        font.DrawChar(this, rune, baseLine + resolvedShadowOffset, scale, shadowColor!.Value);
+                    }
+
+                    if (hasStroke)
+                    {
+                        font.DrawCharStroke(this, rune, baseLine, scale, strokeColor!.Value, resolvedStrokeThickness);
+                    }
+                }
+
                 var advance = font.DrawChar(this, rune, baseLine, scale, color);
                 advanceTotal.X += advance;
                 baseLine += new Vector2(advance, 0);
@@ -177,7 +252,6 @@ namespace Robust.Client.Graphics
 
             return advanceTotal;
         }
-
         public Vector2 GetDimensions(Font font, ReadOnlySpan<char> str, float scale)
         {
             var baseLine = new Vector2(0f, font.GetAscent(scale));

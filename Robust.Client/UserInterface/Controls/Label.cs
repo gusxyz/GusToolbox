@@ -161,6 +161,10 @@ namespace Robust.Client.UserInterface.Controls
         [Animatable]
         public Color? FontColorOverride { get; set; }
 
+        public Color? FontColorStrokeOverride { get; set; }
+
+        public int? StrokeThicknessOverride { get; set; }
+
         public int? ShadowOffsetXOverride { get; set; }
 
         public int? ShadowOffsetYOverride { get; set; }
@@ -199,6 +203,12 @@ namespace Robust.Client.UserInterface.Controls
             var newlines = 0;
             var font = ActualFont;
             var actualFontColor = ActualFontColor;
+            var shadowColor = FontColorShadowOverride;
+            var hasShadow = shadowColor.HasValue;
+            var shadowOffset = new Vector2(ShadowOffsetXOverride ?? 1, ShadowOffsetYOverride ?? 1);
+            var strokeColor = FontColorStrokeOverride;
+            var strokeThickness = Math.Max(StrokeThicknessOverride ?? 0, 0);
+            var hasStroke = strokeColor.HasValue && strokeThickness > 0;
 
             Vector2 CalcBaseline()
             {
@@ -232,6 +242,20 @@ namespace Robust.Client.UserInterface.Controls
                 {
                     newlines += 1;
                     baseLine = CalcBaseline();
+                    continue;
+                }
+
+                if (!Rune.IsWhiteSpace(rune))
+                {
+                    if (hasShadow)
+                    {
+                        font.DrawChar(handle, rune, baseLine + shadowOffset, UIScale, shadowColor!.Value);
+                    }
+
+                    if (hasStroke)
+                    {
+                        font.DrawCharStroke(handle, rune, baseLine, UIScale, strokeColor!.Value, strokeThickness);
+                    }
                 }
 
                 var advance = font.DrawChar(handle, rune, baseLine, UIScale, actualFontColor);
