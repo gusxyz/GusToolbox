@@ -31,12 +31,35 @@ namespace Robust.Client.Graphics
 
     internal interface IFontInstanceHandle
     {
-        Texture? GetCharTexture(Rune codePoint, float scale, int strokeThickness = 0);
-        Texture? GetCharTexture(char chr, float scale, int strokeThickness = 0) =>
-            GetCharTexture((Rune) chr, scale, strokeThickness);
-        CharMetrics? GetCharMetrics(Rune codePoint, float scale, int strokeThickness = 0);
-        CharMetrics? GetCharMetrics(char chr, float scale, int strokeThickness = 0) =>
-            GetCharMetrics((Rune) chr, scale, strokeThickness);
+        Texture? GetCharTexture(
+            Rune codePoint,
+            float scale,
+            int strokeThicknessFixed = 0,
+            FontStrokeLineCap lineCap = FontStrokeLineCap.Round,
+            FontStrokeLineJoin lineJoin = FontStrokeLineJoin.Round);
+
+        Texture? GetCharTexture(
+            char chr,
+            float scale,
+            int strokeThicknessFixed = 0,
+            FontStrokeLineCap lineCap = FontStrokeLineCap.Round,
+            FontStrokeLineJoin lineJoin = FontStrokeLineJoin.Round) =>
+            GetCharTexture((Rune) chr, scale, strokeThicknessFixed, lineCap, lineJoin);
+
+        CharMetrics? GetCharMetrics(
+            Rune codePoint,
+            float scale,
+            int strokeThicknessFixed = 0,
+            FontStrokeLineCap lineCap = FontStrokeLineCap.Round,
+            FontStrokeLineJoin lineJoin = FontStrokeLineJoin.Round);
+
+        CharMetrics? GetCharMetrics(
+            char chr,
+            float scale,
+            int strokeThicknessFixed = 0,
+            FontStrokeLineCap lineCap = FontStrokeLineCap.Round,
+            FontStrokeLineJoin lineJoin = FontStrokeLineJoin.Round) =>
+            GetCharMetrics((Rune) chr, scale, strokeThicknessFixed, lineCap, lineJoin);
 
         int GetAscent(float scale);
         int GetDescent(float scale);

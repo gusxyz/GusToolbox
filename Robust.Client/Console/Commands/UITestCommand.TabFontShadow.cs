@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using Robust.Client.Graphics;
 using Robust.Client.UserInterface;
 using Robust.Client.UserInterface.Controls;
@@ -17,7 +18,7 @@ internal sealed partial class UITestControl
             TabContainer.SetTabTitle(this, nameof(Tab.FontShadow));
 
             var runescapeFont = LoadRunescapeFont(16);
-            var previewText = "THE QUICK BROWN FOX 0123456789";
+            var previewText = "T H E   Q U I C K   B R O W N   F O X   0 1 2 3 4 5 6 7 8 9";
 
             var heading = CreatePreviewLabel(runescapeFont);
             heading.SetMessage(
@@ -33,8 +34,9 @@ internal sealed partial class UITestControl
             {
                 MinValue = 0,
                 MaxValue = 4,
-                Value = 2,
+                Value = 1.5f,
                 Rounded = true,
+                RoundingDecimals = 2,
                 MinHeight = 24
             };
 
@@ -56,6 +58,18 @@ internal sealed partial class UITestControl
                 MinHeight = 24
             };
 
+            var lineCapButton = new OptionButton();
+            lineCapButton.AddItem("Round", (int) FontStrokeLineCap.Round);
+            lineCapButton.AddItem("Butt", (int) FontStrokeLineCap.Butt);
+            lineCapButton.AddItem("Square", (int) FontStrokeLineCap.Square);
+            lineCapButton.SelectId((int) FontStrokeLineCap.Round);
+
+            var lineJoinButton = new OptionButton();
+            lineJoinButton.AddItem("Round", (int) FontStrokeLineJoin.Round);
+            lineJoinButton.AddItem("Bevel", (int) FontStrokeLineJoin.Bevel);
+            lineJoinButton.AddItem("Miter", (int) FontStrokeLineJoin.Miter);
+            lineJoinButton.SelectId((int) FontStrokeLineJoin.Round);
+
             var sliderInfo = new Label
             {
                 FontOverride = runescapeFont,
@@ -65,6 +79,17 @@ internal sealed partial class UITestControl
             strokeSlider.OnValueChanged += _ => UpdatePreview();
             shadowXSlider.OnValueChanged += _ => UpdatePreview();
             shadowYSlider.OnValueChanged += _ => UpdatePreview();
+            lineCapButton.OnItemSelected += args =>
+            {
+                lineCapButton.SelectId(args.Id);
+                UpdatePreview();
+            };
+
+            lineJoinButton.OnItemSelected += args =>
+            {
+                lineJoinButton.SelectId(args.Id);
+                UpdatePreview();
+            };
 
             AddChild(new BoxContainer
             {
@@ -112,6 +137,20 @@ internal sealed partial class UITestControl
                     strokeSlider,
                     new Label
                     {
+                        Text = "Stroke Line Cap",
+                        FontOverride = runescapeFont,
+                        FontColorOverride = Color.White
+                    },
+                    lineCapButton,
+                    new Label
+                    {
+                        Text = "Stroke Line Join",
+                        FontOverride = runescapeFont,
+                        FontColorOverride = Color.White
+                    },
+                    lineJoinButton,
+                    new Label
+                    {
                         Text = "Shadow Offset X",
                         FontOverride = runescapeFont,
                         FontColorOverride = Color.White
@@ -131,9 +170,22 @@ internal sealed partial class UITestControl
 
             void UpdatePreview()
             {
-                var strokeThickness = (int) strokeSlider.Value;
+                var strokeThickness = strokeSlider.Value;
+                var strokeThicknessMarkup = strokeThickness.ToString("0.##", CultureInfo.InvariantCulture);
                 var shadowX = (int) shadowXSlider.Value;
                 var shadowY = (int) shadowYSlider.Value;
+                var lineCapMarkup = lineCapButton.SelectedId switch
+                {
+                    (int) FontStrokeLineCap.Butt => "butt",
+                    (int) FontStrokeLineCap.Square => "square",
+                    _ => "round"
+                };
+                var lineJoinMarkup = lineJoinButton.SelectedId switch
+                {
+                    (int) FontStrokeLineJoin.Bevel => "bevel",
+                    (int) FontStrokeLineJoin.Miter => "miter",
+                    _ => "round"
+                };
 
                 plain.SetMessage(FormattedMessage.FromMarkupOrThrow($"[color=#f5f5f5]Plain: {previewText}[/color]"));
                 shadow.SetMessage(
@@ -141,11 +193,11 @@ internal sealed partial class UITestControl
                         $"[color=#f6f6f6][dropshadow=#000000D9 x={shadowX} y={shadowY}]Shadow: {previewText}[/dropshadow][/color]"));
                 stroke.SetMessage(
                     FormattedMessage.FromMarkupOrThrow(
-                        $"[color=#fff6d6][stroke=#1a1a1a thickness={strokeThickness}]Stroke: {previewText}[/stroke][/color]"));
+                        $"[color=#fff6d6][stroke=#1a1a1a thickness=\"{strokeThicknessMarkup}\" linecap=\"{lineCapMarkup}\" linejoin=\"{lineJoinMarkup}\"]Stroke: {previewText}[/stroke][/color]"));
                 combo.SetMessage(
                     FormattedMessage.FromMarkupOrThrow(
-                        $"[color=#f9fff0][stroke=#182538 thickness={strokeThickness}][dropshadow=#000000D9 x={shadowX} y={shadowY}]Stroke + Shadow: {previewText}[/dropshadow][/stroke][/color]"));
-                sliderInfo.Text = $"Interactive settings: stroke={strokeThickness}px shadow=({shadowX}, {shadowY})";
+                        $"[color=#f9fff0][stroke=#182538 thickness=\"{strokeThicknessMarkup}\" linecap=\"{lineCapMarkup}\" linejoin=\"{lineJoinMarkup}\"][dropshadow=#000000D9 x={shadowX} y={shadowY}]Stroke + Shadow: {previewText}[/dropshadow][/stroke][/color]"));
+                sliderInfo.Text = $"Interactive settings: stroke={strokeThickness:0.##}px cap={lineCapMarkup} join={lineJoinMarkup} shadow=({shadowX}, {shadowY})";
             }
         }
 

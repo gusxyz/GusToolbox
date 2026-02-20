@@ -196,7 +196,7 @@ namespace Robust.Client.Graphics
             float scale,
             Color color,
             Color strokeColor,
-            int strokeThickness,
+            float strokeThickness,
             Color? shadowColor = null,
             Vector2? shadowOffset = null)
         {
@@ -212,7 +212,7 @@ namespace Robust.Client.Graphics
             Color? shadowColor,
             Vector2? shadowOffset,
             Color? strokeColor,
-            int strokeThickness)
+            float strokeThickness)
         {
             var advanceTotal = Vector2.Zero;
             var baseLine = pos with { Y = font.GetAscent(scale) + pos.Y };
@@ -220,7 +220,7 @@ namespace Robust.Client.Graphics
             var hasShadow = shadowColor.HasValue;
             var hasStroke = strokeColor.HasValue && strokeThickness > 0;
             var resolvedShadowOffset = shadowOffset ?? Vector2.One;
-            var resolvedStrokeThickness = Math.Max(strokeThickness, 0);
+            var resolvedStrokeThickness = Math.Max(strokeThickness, 0f);
 
             foreach (var rune in str.EnumerateRunes())
             {
@@ -237,7 +237,7 @@ namespace Robust.Client.Graphics
                     if (hasShadow)
                         font.DrawChar(this, rune, baseLine + resolvedShadowOffset, scale, shadowColor!.Value);
                     if (hasStroke)
-                        font.DrawCharStroke(this, rune, baseLine, scale, strokeColor!.Value, resolvedStrokeThickness);
+                        font.DrawCharStroke(this, rune, baseLine, scale, strokeColor!.Value, new FontStrokeStyle(resolvedStrokeThickness));
                 }
 
                 var advance = font.DrawChar(this, rune, baseLine, scale, color);

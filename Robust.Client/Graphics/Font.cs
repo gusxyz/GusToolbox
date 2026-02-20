@@ -7,6 +7,27 @@ using Robust.Shared.Maths;
 
 namespace Robust.Client.Graphics
 {
+    // not really happy with the enums but right now I don't really wanna expose SharpFont enums at all.
+    // maybe im just overthinking it who knows that is what the review is for i guess.
+    public enum FontStrokeLineCap : byte
+    {
+        Butt = 0,
+        Round = 1,
+        Square = 2
+    }
+
+    public enum FontStrokeLineJoin : byte
+    {
+        Round = 0,
+        Bevel = 1,
+        Miter = 2
+    }
+
+    public readonly record struct FontStrokeStyle(
+        float Thickness,
+        FontStrokeLineCap LineCap = FontStrokeLineCap.Round,
+        FontStrokeLineJoin LineJoin = FontStrokeLineJoin.Round);
+
     /// <summary>
     ///     A generic font for rendering of text.
     ///     Does not contain properties such as size. Those are specific to children such as <see cref="VectorFont" />
@@ -67,10 +88,22 @@ namespace Robust.Client.Graphics
             Vector2 baseline,
             float scale,
             Color color,
-            int strokeThickness,
+            FontStrokeStyle strokeStyle,
             bool fallback = true)
         {
             return DrawChar(handle, rune, baseline, scale, color, fallback);
+        }
+
+        protected static int StrokeThicknessToFixed26Dot6(float strokeThickness)
+        {
+            if (strokeThickness <= 0f)
+                return 0;
+            // fixed26.6 scales ints by 2^6 = 64.
+            var scaled = strokeThickness * 64;
+            if (scaled >= int.MaxValue)
+                return int.MaxValue;
+            var fixedThickness = (int) MathF.Round(scaled);
+            return Math.Max(fixedThickness, 1);
         }
 
         /// <summary>
@@ -168,19 +201,21 @@ namespace Robust.Client.Graphics
             Vector2 baseline,
             float scale,
             Color color,
-            int strokeThickness,
+            FontStrokeStyle strokeStyle,
             bool fallback = true)
         {
-            if (strokeThickness <= 0)
+            if (strokeStyle.Thickness <= 0)
                 return DrawChar(handle, rune, baseline, scale, color, fallback);
 
-            var metrics = Handle.GetCharMetrics(rune, scale, strokeThickness);
+            var strokeThicknessFixed = StrokeThicknessToFixed26Dot6(strokeStyle.Thickness);
+
+            var metrics = Handle.GetCharMetrics(rune, scale, strokeThicknessFixed, strokeStyle.LineCap, strokeStyle.LineJoin);
             if (!metrics.HasValue)
             {
                 if (fallback && !Rune.IsWhiteSpace(rune))
                 {
                     rune = new Rune('�');
-                    metrics = Handle.GetCharMetrics(rune, scale, strokeThickness);
+                    metrics = Handle.GetCharMetrics(rune, scale, strokeThicknessFixed, strokeStyle.LineCap, strokeStyle.LineJoin);
                     if (!metrics.HasValue)
                         return 0;
                 }
@@ -188,7 +223,7 @@ namespace Robust.Client.Graphics
                     return 0;
             }
 
-            var texture = Handle.GetCharTexture(rune, scale, strokeThickness);
+            var texture = Handle.GetCharTexture(rune, scale, strokeThicknessFixed, strokeStyle.LineCap, strokeStyle.LineJoin);
             if (texture == null)
                 return metrics.Value.Advance;
 
@@ -255,18 +290,18 @@ namespace Robust.Client.Graphics
             Vector2 baseline,
             float scale,
             Color color,
-            int strokeThickness,
+            FontStrokeStyle strokeStyle,
             bool fallback = true)
         {
             foreach (var f in Stack)
             {
-                var w = f.DrawCharStroke(handle, rune, baseline, scale, color, strokeThickness, fallback: false);
+                var w = f.DrawCharStroke(handle, rune, baseline, scale, color, strokeStyle, fallback: false);
                 if (w != 0f)
                     return w;
             }
 
             if (fallback)
-                return _main.DrawCharStroke(handle, rune, baseline, scale, color, strokeThickness, fallback: true);
+                return _main.DrawCharStroke(handle, rune, baseline, scale, color, strokeStyle, fallback: true);
 
             return 0f;
         }
@@ -306,11 +341,8 @@ namespace Robust.Client.Graphics
             Vector2 baseline,
             float scale,
             Color color,
-            int strokeThickness,
-            bool fallback = true)
-        {
-            return 0;
-        }
+            FontStrokeStyle strokeStyle,
+            bool fallback = true) => 0f;
 
         public override CharMetrics? GetCharMetrics(Rune rune, float scale, bool fallback=true)
         {

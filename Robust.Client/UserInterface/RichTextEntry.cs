@@ -25,8 +25,10 @@ namespace Robust.Client.UserInterface
             typeof(BoldTag),
             typeof(BulletTag),
             typeof(ColorTag),
+            typeof(DropShadowTag),
             typeof(HeadingTag),
-            typeof(ItalicTag)
+            typeof(ItalicTag),
+            typeof(StrokeTag)
         ];
 
         private readonly Color _defaultColor;
@@ -257,10 +259,24 @@ namespace Robust.Client.UserInterface
                     font = defaultFont;
                 }
 
+                var shadowOffset = Vector2.Zero;
+                var hasShadow = context.ShadowColor.TryPeek(out var shadowColor)
+                                && context.ShadowOffset.TryPeek(out shadowOffset);
+                var strokeThickness = 0f;
+                var strokeLineCap = FontStrokeLineCap.Round;
+                var strokeLineJoin = FontStrokeLineJoin.Round;
+                var hasStroke = context.StrokeColor.TryPeek(out var strokeColor) &&
+                                context.StrokeThickness.TryPeek(out strokeThickness)
+                                && strokeThickness > 0;
+                if (hasStroke)
+                {
+                    context.StrokeLineCap.TryPeek(out strokeLineCap);
+                    context.StrokeLineJoin.TryPeek(out strokeLineJoin);
+                }
+
                 foreach (var rune in text.EnumerateRunes())
                 {
-                    bool skipSpaceBaseline = false;
-
+                    var skipSpaceBaseline = false;
                     if (lineBreakIndex < LineBreaks.Count &&
                         LineBreaks[lineBreakIndex] == globalBreakCounter)
                     {
@@ -272,6 +288,20 @@ namespace Robust.Client.UserInterface
                         // Which means if this metric Ends on a space, the next metric will use the wrong baseline when it starts, for some reason ..
                         if (rune == spaceRune)
                             skipSpaceBaseline = true;
+                    }
+
+                    if (!Rune.IsWhiteSpace(rune))
+                    {
+                        if (hasShadow)
+                            font.DrawChar(handle, rune, baseLine + shadowOffset, uiScale, shadowColor);
+                        if (hasStroke)
+                            font.DrawCharStroke(
+                                handle,
+                                rune,
+                                baseLine,
+                                uiScale,
+                                strokeColor,
+                                new FontStrokeStyle(strokeThickness, strokeLineCap, strokeLineJoin));
                     }
 
                     var advance = font.DrawChar(handle, rune, baseLine, uiScale, color);

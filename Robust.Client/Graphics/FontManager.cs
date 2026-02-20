@@ -126,10 +126,18 @@ namespace Robust.Client.Graphics
             ScaledFontData scaled,
             float scale,
             uint glyph,
-            int strokeThickness = 0)
+            int strokeThicknessFixed = 0,
+            FontStrokeLineCap lineCap = FontStrokeLineCap.Round,
+            FontStrokeLineJoin lineJoin = FontStrokeLineJoin.Round)
         {
-            var stroke = Math.Max(strokeThickness, 0);
-            var cacheKey = (glyph, stroke);
+            var stroke = Math.Max(strokeThicknessFixed, 0);
+            if (stroke == 0)
+            {
+                lineCap = FontStrokeLineCap.Round;
+                lineJoin = FontStrokeLineJoin.Round;
+            }
+
+            var cacheKey = (glyph, stroke, lineCap, lineJoin);
             // Check if already cached.
             if (scaled.GlyphInfos.TryGetValue(cacheKey, out var info))
                 return info;
@@ -161,7 +169,7 @@ namespace Robust.Client.Graphics
 
                 using var sourceGlyph = face.Glyph.GetGlyph();
                 using var stroker = new Stroker(_library);
-                stroker.Set(stroke * 64, StrokerLineCap.Round, StrokerLineJoin.Round, Fixed16Dot16.FromInt32(0));
+                stroker.Set(stroke, ToSharpLineCap(lineCap), ToSharpLineJoin(lineJoin), Fixed16Dot16.FromInt32(0));
 
                 using var strokedGlyph = sourceGlyph.StrokeBorder(stroker, false, false);
                 strokedGlyph.ToBitmap(RenderMode.Normal, new FTVector26Dot6(0, 0), true);
@@ -233,6 +241,26 @@ namespace Robust.Client.Graphics
                 scaled.AtlasTextures.Add(sheet);
                 return sheet;
             }
+        }
+
+        private static StrokerLineCap ToSharpLineCap(FontStrokeLineCap cap)
+        {
+            return cap switch
+            {
+                FontStrokeLineCap.Butt => StrokerLineCap.Butt,
+                FontStrokeLineCap.Square => StrokerLineCap.Square,
+                _ => StrokerLineCap.Round
+            };
+        }
+
+        private static StrokerLineJoin ToSharpLineJoin(FontStrokeLineJoin join)
+        {
+            return join switch
+            {
+                FontStrokeLineJoin.Bevel => StrokerLineJoin.Bevel,
+                FontStrokeLineJoin.Miter => StrokerLineJoin.MiterFixed,
+                _ => StrokerLineJoin.Round
+            };
         }
 
         private static Image<A8> GlyphBitmapToImage(FTBitmap bitmap)
@@ -338,19 +366,29 @@ namespace Robust.Client.Graphics
                 _scaledData.Clear();
             }
 
-            public Texture? GetCharTexture(Rune codePoint, float scale, int strokeThickness = 0)
+            public Texture? GetCharTexture(
+                Rune codePoint,
+                float scale,
+                int strokeThicknessFixed = 0,
+                FontStrokeLineCap lineCap = FontStrokeLineCap.Round,
+                FontStrokeLineJoin lineJoin = FontStrokeLineJoin.Round)
             {
                 var glyph = GetGlyph(codePoint);
                 if (glyph == 0)
                     return null;
 
                 var scaled = GetScaleDatum(scale);
-                var glyphInfo = _fontManager.EnsureGlyphCached(this, scaled, scale, glyph, strokeThickness);
+                var glyphInfo = _fontManager.EnsureGlyphCached(this, scaled, scale, glyph, strokeThicknessFixed, lineCap, lineJoin);
 
                 return glyphInfo.Texture;
             }
 
-            public CharMetrics? GetCharMetrics(Rune codePoint, float scale, int strokeThickness = 0)
+            public CharMetrics? GetCharMetrics(
+                Rune codePoint,
+                float scale,
+                int strokeThicknessFixed = 0,
+                FontStrokeLineCap lineCap = FontStrokeLineCap.Round,
+                FontStrokeLineJoin lineJoin = FontStrokeLineJoin.Round)
             {
                 var glyph = GetGlyph(codePoint);
                 if (glyph == 0)
@@ -359,7 +397,7 @@ namespace Robust.Client.Graphics
                 }
 
                 var scaled = GetScaleDatum(scale);
-                var info = _fontManager.EnsureGlyphCached(this, scaled, scale, glyph, strokeThickness);
+                var info = _fontManager.EnsureGlyphCached(this, scaled, scale, glyph, strokeThicknessFixed, lineCap, lineJoin);
 
                 return info.Metrics;
             }
@@ -427,7 +465,7 @@ namespace Robust.Client.Graphics
             }
 
             public readonly List<OwnedTexture> AtlasTextures = new();
-            public readonly Dictionary<(uint Glyph, int StrokeThickness), GlyphInfo> GlyphInfos = new();
+            public readonly Dictionary<(uint Glyph, int StrokeThicknessFixed, FontStrokeLineCap LineCap, FontStrokeLineJoin LineJoin), GlyphInfo> GlyphInfos = new();
             public readonly int Ascent;
             public readonly int Descent;
             public readonly int Height;

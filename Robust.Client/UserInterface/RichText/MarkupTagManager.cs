@@ -24,9 +24,11 @@ public sealed class MarkupTagManager
         new BulletTag(),
         new ColorTag(),
         new CommandLinkTag(),
+        new DropShadowTag(),
         new FontTag(),
         new HeadingTag(),
-        new ItalicTag()
+        new ItalicTag(),
+        new StrokeTag()
     }.ToDictionary(x => x.Name.ToLower(), x => x);
 
     /// <summary>
@@ -39,9 +41,11 @@ public sealed class MarkupTagManager
         typeof(BulletTag),
         typeof(ColorTag),
         typeof(CommandLinkTag),
+        typeof(DropShadowTag),
         typeof(FontTag),
         typeof(HeadingTag),
-        typeof(ItalicTag)
+        typeof(ItalicTag),
+        typeof(StrokeTag)
     };
 
     public void Initialize()
