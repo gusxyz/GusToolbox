@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Numerics;
+using System.Text;
+using Robust.Client.Graphics;
 using Robust.Shared.IoC;
 using Robust.Shared.Reflection;
 using Robust.Shared.Sandboxing;
@@ -13,6 +16,7 @@ public sealed class MarkupTagManager
     [Dependency] private readonly IReflectionManager _reflectionManager = default!;
     [Dependency] private readonly ISandboxHelper _sandboxHelper = default!;
     [Dependency] private readonly IDependencyCollection _deps = default!;
+    private readonly List<IMarkupGlyphTagHandler> _glyphTagHandlers = new();
 
     /// <summary>
     /// Tags defined in engine need to be instantiated here because of sandboxing
@@ -63,6 +67,26 @@ public sealed class MarkupTagManager
         foreach (var tag in _markupTagTypes.Values)
         {
             _deps.InjectDependencies(tag);
+        }
+
+        _glyphTagHandlers.Clear();
+        foreach (var tag in _markupTagTypes.Values.OfType<IMarkupGlyphTagHandler>())
+        {
+            _glyphTagHandlers.Add(tag);
+        }
+    }
+
+    internal void DrawBeforeGlyph(
+        DrawingHandleBase handle,
+        Font font,
+        Rune rune,
+        Vector2 baseline,
+        float uiScale,
+        MarkupDrawingContext context)
+    {
+        foreach (var tag in _glyphTagHandlers)
+        {
+            tag.DrawBeforeGlyph(handle, font, rune, baseline, uiScale, context);
         }
     }
 

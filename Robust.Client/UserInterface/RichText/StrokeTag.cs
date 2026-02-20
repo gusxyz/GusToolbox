@@ -1,4 +1,6 @@
 using System;
+using System.Numerics;
+using System.Text;
 using Robust.Client.Graphics;
 using Robust.Shared.Maths;
 using Robust.Shared.Utility;
@@ -8,7 +10,7 @@ namespace Robust.Client.UserInterface.RichText;
 /// <summary>
 /// Renders text with a stroked outline.
 /// </summary>
-public sealed class StrokeTag : IMarkupTagHandler
+public sealed class StrokeTag : IMarkupTagHandler, IMarkupGlyphTagHandler
 {
     public string Name => "stroke";
 
@@ -31,6 +33,25 @@ public sealed class StrokeTag : IMarkupTagHandler
         context.StrokeLineCap.Pop();
         context.StrokeThickness.Pop();
         context.StrokeColor.Pop();
+    }
+
+    void IMarkupGlyphTagHandler.DrawBeforeGlyph(
+        DrawingHandleBase handle,
+        Font font,
+        Rune rune,
+        Vector2 baseline,
+        float uiScale,
+        MarkupDrawingContext context)
+    {
+        if (!context.StrokeColor.TryPeek(out var color)
+            || !context.StrokeThickness.TryPeek(out var thickness)
+            || !context.StrokeLineCap.TryPeek(out var lineCap)
+            || !context.StrokeLineJoin.TryPeek(out var lineJoin)
+            || thickness <= 0)
+            return;
+
+        var style = new FontStrokeStyle(thickness, lineCap, lineJoin);
+        font.DrawCharStroke(handle, rune, baseline, uiScale, color, style);
     }
 
     private static Color ResolveColor(MarkupNode node, Color fallback)

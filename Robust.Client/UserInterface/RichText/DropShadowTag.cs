@@ -1,4 +1,6 @@
 using System.Numerics;
+using System.Text;
+using Robust.Client.Graphics;
 using Robust.Shared.Maths;
 using Robust.Shared.Utility;
 
@@ -7,7 +9,7 @@ namespace Robust.Client.UserInterface.RichText;
 /// <summary>
 /// Renders text with a drop shadow.
 /// </summary>
-public sealed class DropShadowTag : IMarkupTagHandler
+public sealed class DropShadowTag : IMarkupTagHandler, IMarkupGlyphTagHandler
 {
     public string Name => "dropshadow";
 
@@ -25,6 +27,20 @@ public sealed class DropShadowTag : IMarkupTagHandler
     {
         context.ShadowOffset.Pop();
         context.ShadowColor.Pop();
+    }
+
+    void IMarkupGlyphTagHandler.DrawBeforeGlyph(
+        DrawingHandleBase handle,
+        Font font,
+        Rune rune,
+        Vector2 baseline,
+        float uiScale,
+        MarkupDrawingContext context)
+    {
+        if (!context.ShadowColor.TryPeek(out var color) || !context.ShadowOffset.TryPeek(out var offset))
+            return;
+
+        font.DrawChar(handle, rune, baseline + offset, uiScale, color);
     }
 
     private static Color ResolveColor(MarkupNode node, Color fallback)

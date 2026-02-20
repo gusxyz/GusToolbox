@@ -259,19 +259,6 @@ namespace Robust.Client.UserInterface
                     font = defaultFont;
                 }
 
-                var shadowOffset = Vector2.Zero;
-                var hasShadow = context.ShadowColor.TryPeek(out var shadowColor)
-                                && context.ShadowOffset.TryPeek(out shadowOffset);
-                var strokeThickness = 0f;
-                var strokeLineCap = FontStrokeLineCap.Round;
-                var strokeLineJoin = FontStrokeLineJoin.Round;
-                var hasStroke = context.StrokeColor.TryPeek(out var strokeColor)
-                    && context.StrokeThickness.TryPeek(out strokeThickness)
-                    && context.StrokeLineCap.TryPeek(out strokeLineCap)
-                    && context.StrokeLineJoin.TryPeek(out strokeLineJoin)
-                    && strokeThickness > 0;
-                var strokeStyle = new FontStrokeStyle(strokeThickness, strokeLineCap, strokeLineJoin);
-
                 foreach (var rune in text.EnumerateRunes())
                 {
                     var skipSpaceBaseline = false;
@@ -290,16 +277,7 @@ namespace Robust.Client.UserInterface
 
                     if (!Rune.IsWhiteSpace(rune))
                     {
-                        if (hasShadow)
-                            font.DrawChar(handle, rune, baseLine + shadowOffset, uiScale, shadowColor);
-                        if (hasStroke)
-                            font.DrawCharStroke(
-                                handle,
-                                rune,
-                                baseLine,
-                                uiScale,
-                                strokeColor,
-                                strokeStyle);
+                        tagManager.DrawBeforeGlyph(handle, font, rune, baseLine, uiScale, context);
                     }
 
                     var advance = font.DrawChar(handle, rune, baseLine, uiScale, color);
