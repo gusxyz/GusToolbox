@@ -215,7 +215,7 @@ namespace Robust.Client.Graphics
             int strokeThickness)
         {
             var advanceTotal = Vector2.Zero;
-            var baseLine = new Vector2(pos.X, font.GetAscent(scale) + pos.Y);
+            var baseLine = pos with { Y = font.GetAscent(scale) + pos.Y };
             var lineHeight = font.GetLineHeight(scale);
             var hasShadow = shadowColor.HasValue;
             var hasStroke = strokeColor.HasValue && strokeThickness > 0;
@@ -235,21 +235,15 @@ namespace Robust.Client.Graphics
                 if (!Rune.IsWhiteSpace(rune))
                 {
                     if (hasShadow)
-                    {
                         font.DrawChar(this, rune, baseLine + resolvedShadowOffset, scale, shadowColor!.Value);
-                    }
-
                     if (hasStroke)
-                    {
                         font.DrawCharStroke(this, rune, baseLine, scale, strokeColor!.Value, resolvedStrokeThickness);
-                    }
                 }
 
                 var advance = font.DrawChar(this, rune, baseLine, scale, color);
                 advanceTotal.X += advance;
                 baseLine += new Vector2(advance, 0);
             }
-
             return advanceTotal;
         }
         public Vector2 GetDimensions(Font font, ReadOnlySpan<char> str, float scale)

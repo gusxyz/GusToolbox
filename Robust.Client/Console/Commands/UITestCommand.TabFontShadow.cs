@@ -1,7 +1,10 @@
+using System;
 using Robust.Client.Graphics;
 using Robust.Client.UserInterface;
 using Robust.Client.UserInterface.Controls;
+using Robust.Shared.IoC;
 using Robust.Shared.Maths;
+using Robust.Shared.Utility;
 
 namespace Robust.Client.Console.Commands;
 
@@ -13,50 +16,18 @@ internal sealed partial class UITestControl
         {
             TabContainer.SetTabTitle(this, nameof(Tab.FontShadow));
 
-            var heading = new Label
-            {
-                Text = "Font Stroke + Drop Shadow Preview",
-                FontColorOverride = Color.White,
-                FontColorShadowOverride = Color.Black.WithAlpha(0.8f),
-                ShadowOffsetXOverride = 1,
-                ShadowOffsetYOverride = 1,
-                FontColorStrokeOverride = Color.FromHex("#161616"),
-                StrokeThicknessOverride = 1,
-            };
+            var runescapeFont = LoadRunescapeFont(16);
+            var previewText = "THE QUICK BROWN FOX 0123456789";
 
-            var plain = new Label
-            {
-                Text = "Plain: The quick brown fox 0123456789",
-                FontColorOverride = Color.FromHex("#f5f5f5"),
-            };
+            var heading = CreatePreviewLabel(runescapeFont);
+            heading.SetMessage(
+                FormattedMessage.FromMarkupOrThrow(
+                    "[color=white][stroke=#161616 thickness=1][dropshadow=#000000CC x=1 y=1]Font Stroke + Drop Shadow Preview[/dropshadow][/stroke][/color]"));
 
-            var shadow = new Label
-            {
-                Text = "Shadow: The quick brown fox 0123456789",
-                FontColorOverride = Color.FromHex("#f6f6f6"),
-                FontColorShadowOverride = Color.Black.WithAlpha(0.85f),
-                ShadowOffsetXOverride = 2,
-                ShadowOffsetYOverride = 2,
-            };
-
-            var stroke = new Label
-            {
-                Text = "Stroke: The quick brown fox 0123456789",
-                FontColorOverride = Color.FromHex("#fff6d6"),
-                FontColorStrokeOverride = Color.FromHex("#1a1a1a"),
-                StrokeThicknessOverride = 2,
-            };
-
-            var combo = new Label
-            {
-                Text = "Stroke + Shadow: The quick brown fox 0123456789",
-                FontColorOverride = Color.FromHex("#f9fff0"),
-                FontColorStrokeOverride = Color.FromHex("#182538"),
-                StrokeThicknessOverride = 2,
-                FontColorShadowOverride = Color.Black.WithAlpha(0.85f),
-                ShadowOffsetXOverride = 2,
-                ShadowOffsetYOverride = 2,
-            };
+            var plain = CreatePreviewLabel(runescapeFont);
+            var shadow = CreatePreviewLabel(runescapeFont);
+            var stroke = CreatePreviewLabel(runescapeFont);
+            var combo = CreatePreviewLabel(runescapeFont);
 
             var strokeSlider = new Slider
             {
@@ -87,6 +58,7 @@ internal sealed partial class UITestControl
 
             var sliderInfo = new Label
             {
+                FontOverride = runescapeFont,
                 FontColorOverride = Color.White
             };
 
@@ -134,18 +106,21 @@ internal sealed partial class UITestControl
                     new Label
                     {
                         Text = "Stroke Thickness",
+                        FontOverride = runescapeFont,
                         FontColorOverride = Color.White
                     },
                     strokeSlider,
                     new Label
                     {
                         Text = "Shadow Offset X",
+                        FontOverride = runescapeFont,
                         FontColorOverride = Color.White
                     },
                     shadowXSlider,
                     new Label
                     {
                         Text = "Shadow Offset Y",
+                        FontOverride = runescapeFont,
                         FontColorOverride = Color.White
                     },
                     shadowYSlider,
@@ -160,17 +135,52 @@ internal sealed partial class UITestControl
                 var shadowX = (int) shadowXSlider.Value;
                 var shadowY = (int) shadowYSlider.Value;
 
-                stroke.StrokeThicknessOverride = strokeThickness;
-
-                combo.StrokeThicknessOverride = strokeThickness;
-                combo.ShadowOffsetXOverride = shadowX;
-                combo.ShadowOffsetYOverride = shadowY;
-
-                shadow.ShadowOffsetXOverride = shadowX;
-                shadow.ShadowOffsetYOverride = shadowY;
-
+                plain.SetMessage(FormattedMessage.FromMarkupOrThrow($"[color=#f5f5f5]Plain: {previewText}[/color]"));
+                shadow.SetMessage(
+                    FormattedMessage.FromMarkupOrThrow(
+                        $"[color=#f6f6f6][dropshadow=#000000D9 x={shadowX} y={shadowY}]Shadow: {previewText}[/dropshadow][/color]"));
+                stroke.SetMessage(
+                    FormattedMessage.FromMarkupOrThrow(
+                        $"[color=#fff6d6][stroke=#1a1a1a thickness={strokeThickness}]Stroke: {previewText}[/stroke][/color]"));
+                combo.SetMessage(
+                    FormattedMessage.FromMarkupOrThrow(
+                        $"[color=#f9fff0][stroke=#182538 thickness={strokeThickness}][dropshadow=#000000D9 x={shadowX} y={shadowY}]Stroke + Shadow: {previewText}[/dropshadow][/stroke][/color]"));
                 sliderInfo.Text = $"Interactive settings: stroke={strokeThickness}px shadow=({shadowX}, {shadowY})";
             }
+        }
+
+        private static RichTextLabel CreatePreviewLabel(Font? font)
+        {
+            var label = new RichTextLabel();
+
+            if (font != null)
+            {
+                label.Stylesheet = new Stylesheet([
+                    StylesheetHelpers.Element<RichTextLabel>().Prop("font", font)
+                ]);
+            }
+
+            return label;
+        }
+
+        private static Font? LoadRunescapeFont(int size)
+        {
+            var systemFontManager = IoCManager.Resolve<ISystemFontManager>();
+            if (!systemFontManager.IsSupported)
+                return null;
+
+            foreach (var fontFace in systemFontManager.SystemFontFaces)
+            {
+                if (!fontFace.PostscriptName.Contains("runescape", StringComparison.OrdinalIgnoreCase) &&
+                    !fontFace.FullName.Contains("runescape", StringComparison.OrdinalIgnoreCase) &&
+                    !fontFace.FamilyName.Contains("runescape", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+                return fontFace.Load(size);
+            }
+
+            return null;
         }
     }
 }

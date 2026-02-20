@@ -130,11 +130,9 @@ namespace Robust.Client.Graphics
         {
             var stroke = Math.Max(strokeThickness, 0);
             var cacheKey = (glyph, stroke);
-
             // Check if already cached.
             if (scaled.GlyphInfos.TryGetValue(cacheKey, out var info))
                 return info;
-
             info = new GlyphInfo();
 
             var face = instance.FaceHandle.Face;
@@ -193,12 +191,7 @@ namespace Robust.Client.Graphics
                     return;
 
                 using var img = GlyphBitmapToImage(bitmap);
-                OwnedTexture sheet;
-                if (scaled.AtlasTextures.Count == 0)
-                    sheet = GenSheet();
-                else
-                    sheet = scaled.AtlasTextures[^1];
-
+                var sheet = scaled.AtlasTextures.Count == 0 ? GenSheet() : scaled.AtlasTextures[^1];
                 var (sheetW, sheetH) = sheet.Size;
 
                 if (sheetW - scaled.CurSheetX < img.Width)
@@ -250,7 +243,6 @@ namespace Robust.Client.Graphics
                 {
                     return MonoBitMapToImage(bitmap);
                 }
-
                 case PixelMode.Gray:
                 {
                     ReadOnlySpan<A8> span;
@@ -267,7 +259,6 @@ namespace Robust.Client.Graphics
                         (0, 0));
                     return img;
                 }
-
                 case PixelMode.Gray2:
                 case PixelMode.Gray4:
                 case PixelMode.Lcd:
@@ -302,7 +293,6 @@ namespace Robust.Client.Graphics
                     bitmapImage[x, y] = new A8(bit ? byte.MaxValue : byte.MinValue);
                 }
             }
-
             return bitmapImage;
         }
 
