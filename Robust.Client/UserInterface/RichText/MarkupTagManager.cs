@@ -23,6 +23,7 @@ public sealed class MarkupTagManager
     /// </summary>
     private readonly Dictionary<string, IMarkupTagHandler> _markupTagTypes = new IMarkupTagHandler[]
     {
+        new AlignTag(),
         new BoldItalicTag(),
         new BoldTag(),
         new BulletTag(),
@@ -32,7 +33,8 @@ public sealed class MarkupTagManager
         new FontTag(),
         new HeadingTag(),
         new ItalicTag(),
-        new StrokeTag()
+        new StrokeTag(),
+        new TrackingTag()
     }.ToDictionary(x => x.Name.ToLowerInvariant(), x => x);
 
     /// <summary>
@@ -40,6 +42,7 @@ public sealed class MarkupTagManager
     /// </summary>
     private readonly List<Type> _engineTypes = new()
     {
+        typeof(AlignTag),
         typeof(BoldItalicTag),
         typeof(BoldTag),
         typeof(BulletTag),
@@ -49,7 +52,8 @@ public sealed class MarkupTagManager
         typeof(FontTag),
         typeof(HeadingTag),
         typeof(ItalicTag),
-        typeof(StrokeTag)
+        typeof(StrokeTag),
+        typeof(TrackingTag)
     };
 
     public void Initialize()

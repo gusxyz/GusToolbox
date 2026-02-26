@@ -160,6 +160,7 @@ Suspendisse hendrerit blandit urna ut laoreet. Suspendisse ac elit at erat males
         _tabContainer.AddChild(new TabWrapContainer { Name = nameof(Tab.WrapContainer) });
         _tabContainer.AddChild(new TabOkLab());
         _tabContainer.AddChild(new TabFontShadow());
+        _tabContainer.AddChild(new TabRichTextAlign());
     }
 
     public void OnClosed()
@@ -286,6 +287,7 @@ Suspendisse hendrerit blandit urna ut laoreet. Suspendisse ac elit at erat males
         WrapContainer = 10,
         OkLab = 11,
         FontShadow = 12,
+        RichTextAlign = 13,
     }
 }
 

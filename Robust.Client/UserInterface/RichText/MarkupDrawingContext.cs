@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Numerics;
 using Robust.Client.Graphics;
+using Robust.Client.UserInterface.Controls;
 using Robust.Shared.Maths;
 
 namespace Robust.Client.UserInterface.RichText;
@@ -15,6 +16,8 @@ public sealed class MarkupDrawingContext
     public readonly Stack<float> StrokeThickness;
     public readonly Stack<FontStrokeLineCap> StrokeLineCap;
     public readonly Stack<FontStrokeLineJoin> StrokeLineJoin;
+    public readonly Stack<Label.AlignMode> Align;
+    public readonly Stack<float> Tracking;
     public readonly List<IMarkupTag> Tags;
 
     public MarkupDrawingContext()
@@ -27,6 +30,8 @@ public sealed class MarkupDrawingContext
         StrokeThickness = new Stack<float>();
         StrokeLineCap = new Stack<FontStrokeLineCap>();
         StrokeLineJoin = new Stack<FontStrokeLineJoin>();
+        Align = new Stack<Label.AlignMode>();
+        Tracking = new Stack<float>();
         Tags = new List<IMarkupTag>();
     }
 
@@ -40,6 +45,8 @@ public sealed class MarkupDrawingContext
         StrokeThickness = new Stack<float>(capacity);
         StrokeLineCap = new Stack<FontStrokeLineCap>(capacity);
         StrokeLineJoin = new Stack<FontStrokeLineJoin>(capacity);
+        Align = new Stack<Label.AlignMode>(capacity);
+        Tracking = new Stack<float>(capacity);
         Tags = new List<IMarkupTag>();
     }
 
@@ -53,6 +60,8 @@ public sealed class MarkupDrawingContext
         StrokeThickness.Clear();
         StrokeLineCap.Clear();
         StrokeLineJoin.Clear();
+        Align.Clear();
+        Tracking.Clear();
         Tags.Clear();
     }
 }

@@ -1,9 +1,7 @@
-using System;
 using System.Globalization;
 using Robust.Client.Graphics;
 using Robust.Client.UserInterface;
 using Robust.Client.UserInterface.Controls;
-using Robust.Shared.IoC;
 using Robust.Shared.Maths;
 using Robust.Shared.Utility;
 
@@ -13,22 +11,24 @@ internal sealed partial class UITestControl
 {
     private sealed class TabFontShadow : Control
     {
+        private const string PreviewFontId = "Grand9KPixel";
+        private const int PreviewFontSize = 16;
+
         public TabFontShadow()
         {
             TabContainer.SetTabTitle(this, nameof(Tab.FontShadow));
 
-            var runescapeFont = LoadRunescapeFont(16);
             var previewText = "T H E   Q U I C K   B R O W N   F O X   0 1 2 3 4 5 6 7 8 9";
 
-            var heading = CreatePreviewLabel(runescapeFont);
-            heading.SetMessage(
-                FormattedMessage.FromMarkupOrThrow(
-                    "[color=white][stroke=#161616 thickness=1][dropshadow=#000000CC x=1 y=1]Font Stroke + Drop Shadow Preview[/dropshadow][/stroke][/color]"));
+            var heading = CreatePreviewLabel();
+            SetPreviewMessage(
+                heading,
+                WrapPreviewFont("[color=white][stroke=#161616 thickness=1][dropshadow=#000000CC x=1 y=1]Font Stroke + Drop Shadow Preview[/dropshadow][/stroke][/color]"));
 
-            var plain = CreatePreviewLabel(runescapeFont);
-            var shadow = CreatePreviewLabel(runescapeFont);
-            var stroke = CreatePreviewLabel(runescapeFont);
-            var combo = CreatePreviewLabel(runescapeFont);
+            var plain = CreatePreviewLabel();
+            var shadow = CreatePreviewLabel();
+            var stroke = CreatePreviewLabel();
+            var combo = CreatePreviewLabel();
 
             var strokeSlider = new Slider
             {
@@ -70,11 +70,7 @@ internal sealed partial class UITestControl
             lineJoinButton.AddItem("Miter", (int) FontStrokeLineJoin.Miter);
             lineJoinButton.SelectId((int) FontStrokeLineJoin.Round);
 
-            var sliderInfo = new Label
-            {
-                FontOverride = runescapeFont,
-                FontColorOverride = Color.White
-            };
+            var sliderInfo = new Label { FontColorOverride = Color.White };
 
             strokeSlider.OnValueChanged += _ => UpdatePreview();
             shadowXSlider.OnValueChanged += _ => UpdatePreview();
@@ -131,35 +127,30 @@ internal sealed partial class UITestControl
                     new Label
                     {
                         Text = "Stroke Thickness",
-                        FontOverride = runescapeFont,
                         FontColorOverride = Color.White
                     },
                     strokeSlider,
                     new Label
                     {
                         Text = "Stroke Line Cap",
-                        FontOverride = runescapeFont,
                         FontColorOverride = Color.White
                     },
                     lineCapButton,
                     new Label
                     {
                         Text = "Stroke Line Join",
-                        FontOverride = runescapeFont,
                         FontColorOverride = Color.White
                     },
                     lineJoinButton,
                     new Label
                     {
                         Text = "Shadow Offset X",
-                        FontOverride = runescapeFont,
                         FontColorOverride = Color.White
                     },
                     shadowXSlider,
                     new Label
                     {
                         Text = "Shadow Offset Y",
-                        FontOverride = runescapeFont,
                         FontColorOverride = Color.White
                     },
                     shadowYSlider,
@@ -179,52 +170,33 @@ internal sealed partial class UITestControl
                 var lineCapMarkup = lineCap.ToString().ToLowerInvariant();
                 var lineJoinMarkup = lineJoin.ToString().ToLowerInvariant();
 
-                plain.SetMessage(FormattedMessage.FromMarkupOrThrow($"[color=#f5f5f5]Plain: {previewText}[/color]"));
-                shadow.SetMessage(
-                    FormattedMessage.FromMarkupOrThrow(
-                        $"[color=#f6f6f6][dropshadow=#000000D9 x={shadowX} y={shadowY}]Shadow: {previewText}[/dropshadow][/color]"));
-                stroke.SetMessage(
-                    FormattedMessage.FromMarkupOrThrow(
-                        $"[color=#fff6d6][stroke=#1a1a1a thickness=\"{strokeThicknessMarkup}\" linecap=\"{lineCapMarkup}\" linejoin=\"{lineJoinMarkup}\"]Stroke: {previewText}[/stroke][/color]"));
-                combo.SetMessage(
-                    FormattedMessage.FromMarkupOrThrow(
-                        $"[color=#f9fff0][stroke=#182538 thickness=\"{strokeThicknessMarkup}\" linecap=\"{lineCapMarkup}\" linejoin=\"{lineJoinMarkup}\"][dropshadow=#000000D9 x={shadowX} y={shadowY}]Stroke + Shadow: {previewText}[/dropshadow][/stroke][/color]"));
+                SetPreviewMessage(plain, WrapPreviewFont($"[color=#f5f5f5]Plain: {previewText}[/color]"));
+                SetPreviewMessage(
+                    shadow,
+                    WrapPreviewFont($"[color=#f6f6f6][dropshadow=#000000D9 x={shadowX} y={shadowY}]Shadow: {previewText}[/dropshadow][/color]"));
+                SetPreviewMessage(
+                    stroke,
+                    WrapPreviewFont($"[color=#fff6d6][stroke=#1a1a1a thickness=\"{strokeThicknessMarkup}\" linecap=\"{lineCapMarkup}\" linejoin=\"{lineJoinMarkup}\"]Stroke: {previewText}[/stroke][/color]"));
+                SetPreviewMessage(
+                    combo,
+                    WrapPreviewFont($"[color=#f9fff0][stroke=#182538 thickness=\"{strokeThicknessMarkup}\" linecap=\"{lineCapMarkup}\" linejoin=\"{lineJoinMarkup}\"][dropshadow=#000000D9 x={shadowX} y={shadowY}]Stroke + Shadow: {previewText}[/dropshadow][/stroke][/color]"));
                 sliderInfo.Text = $"Interactive settings: stroke={strokeThickness:0.##}px cap={lineCapMarkup} join={lineJoinMarkup} shadow=({shadowX}, {shadowY})";
             }
         }
 
-        private static RichTextLabel CreatePreviewLabel(Font? font)
+        private static void SetPreviewMessage(RichTextLabel label, string markup)
         {
-            var label = new RichTextLabel();
-
-            if (font != null)
-            {
-                label.Stylesheet = new Stylesheet([
-                    StylesheetHelpers.Element<RichTextLabel>().Prop("font", font)
-                ]);
-            }
-
-            return label;
+            label.SetMessage(FormattedMessage.FromMarkupOrThrow(markup), tagsAllowed: null);
         }
 
-        private static Font? LoadRunescapeFont(int size)
+        private static string WrapPreviewFont(string markup)
         {
-            var systemFontManager = IoCManager.Resolve<ISystemFontManager>();
-            if (!systemFontManager.IsSupported)
-                return null;
+            return $"[font=\"{PreviewFontId}\" size={PreviewFontSize}]{markup}[/font]";
+        }
 
-            foreach (var fontFace in systemFontManager.SystemFontFaces)
-            {
-                if (!fontFace.PostscriptName.Contains("runescape", StringComparison.OrdinalIgnoreCase) &&
-                    !fontFace.FullName.Contains("runescape", StringComparison.OrdinalIgnoreCase) &&
-                    !fontFace.FamilyName.Contains("runescape", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-                return fontFace.Load(size);
-            }
-
-            return null;
+        private static RichTextLabel CreatePreviewLabel()
+        {
+            return new RichTextLabel();
         }
     }
 }
