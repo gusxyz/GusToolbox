@@ -139,10 +139,13 @@ namespace Robust.Client.UserInterface.Controls
                 return Vector2.Zero;
 
             var font = _getFont();
+            var layoutWidth = float.IsNaN(SetWidth)
+                ? availableSize.X
+                : MathF.Min(SetWidth, availableSize.X);
 
             // _entry is nullable struct.
             // cannot just call _entry.Value.Update() as that doesn't actually update _entry.
-            _entry = _entry.Value.Update(_tagManager, font, availableSize.X * UIScale, UIScale, LineHeightScale);
+            _entry = _entry.Value.Update(_tagManager, font, layoutWidth * UIScale, UIScale, LineHeightScale);
 
             return new Vector2(_entry.Value.Width / UIScale, _entry.Value.Height / UIScale);
         }
@@ -150,7 +153,7 @@ namespace Robust.Client.UserInterface.Controls
         protected internal override void Draw(DrawingHandleScreen handle)
         {
             base.Draw(handle);
-            _entry?.Draw(_tagManager, handle, _getFont(), SizeBox, 0, new MarkupDrawingContext(), UIScale, LineHeightScale);
+            _entry?.Draw(_tagManager, handle, _getFont(), SizeBox, 0, new MarkupDrawingContext(), UIScale, LineHeightScale, false);
         }
 
         [Pure]

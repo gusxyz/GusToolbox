@@ -21,12 +21,16 @@ namespace Robust.Client.UserInterface
     {
         public static readonly Type[] DefaultTags =
         [
+            typeof(AlignTag),
             typeof(BoldItalicTag),
             typeof(BoldTag),
             typeof(BulletTag),
             typeof(ColorTag),
+            typeof(DropShadowTag),
             typeof(HeadingTag),
-            typeof(ItalicTag)
+            typeof(ItalicTag),
+            typeof(StrokeTag),
+            typeof(TrackingTag)
         ];
 
         private readonly Color _defaultColor;
@@ -48,6 +52,8 @@ namespace Robust.Client.UserInterface
         ///     The combined text indices in the message's text tags to put line breaks.
         /// </summary>
         public ValueList<int> LineBreaks;
+        public ValueList<int> LineWidths;
+        public ValueList<Label.AlignMode> LineAlignments;
 
         public readonly Dictionary<int, Control>? Controls;
 
@@ -67,6 +73,8 @@ namespace Robust.Client.UserInterface
             Height = 0;
             Width = 0;
             LineBreaks = default;
+            LineWidths = default;
+            LineAlignments = default;
             _defaultColor = defaultColor ?? new(200, 200, 200);
             _tagsAllowed = tagsAllowed;
             Controls = GetControls(parent, tagManager);
@@ -130,12 +138,15 @@ namespace Robust.Client.UserInterface
 
             Height = defaultFont.GetHeight(uiScale);
             LineBreaks.Clear();
+            LineWidths.Clear();
+            LineAlignments.Clear();
 
             int? breakLine;
             var wordWrap = new WordWrap(maxSizeX);
             var context = new MarkupDrawingContext();
             context.Font.Push(defaultFont);
             context.Color.Push(_defaultColor);
+            context.Tracking.Push(0f);
 
             // Go over every node.
             // Nodes can change the markup drawing context and return additional text.
@@ -159,8 +170,15 @@ namespace Robust.Client.UserInterface
                     if (!font.TryGetCharMetrics(rune, uiScale, out var metrics))
                         continue;
 
+                    var tracking = CurrentTrackingPx(context);
+                    if (tracking != 0)
+                        metrics = new CharMetrics(metrics.BearingX, metrics.BearingY, metrics.Advance + tracking, metrics.Width, metrics.Height);
+
                     if (ProcessMetric(ref this, metrics, out breakLine))
+                    {
+                        UpdateLineLayoutData(tagManager, defaultFont, maxSizeX, uiScale);
                         return this;
+                    }
                 }
 
                 if (Controls == null || !Controls.TryGetValue(nodeIndex, out var control))
@@ -176,11 +194,15 @@ namespace Robust.Client.UserInterface
                     desiredSize.Y);
 
                 if (ProcessMetric(ref this, controlMetrics, out breakLine))
+                {
+                    UpdateLineLayoutData(tagManager, defaultFont, maxSizeX, uiScale);
                     return this;
+                }
             }
 
             Width = wordWrap.FinalizeText(out breakLine);
             CheckLineBreak(ref this, breakLine);
+            UpdateLineLayoutData(tagManager, defaultFont, maxSizeX, uiScale);
 
             return this;
 
@@ -233,15 +255,29 @@ namespace Robust.Client.UserInterface
             float verticalOffset,
             MarkupDrawingContext context,
             float uiScale,
-            float lineHeightScale = 1)
+            float lineHeightScale = 1,
+            bool drawBoxIsPixelSpace = true)
         {
             context.Clear();
             context.Color.Push(_defaultColor);
             context.Font.Push(defaultFont);
+            context.Align.Push(Label.AlignMode.Left);
+            context.Tracking.Push(0f);
+
+            var lineWidths = LineWidths;
+            var lineAlignments = LineAlignments;
+            var drawScale = drawBoxIsPixelSpace ? 1f : uiScale;
+            var drawLeft = drawBox.Left * drawScale;
+            var drawTop = drawBox.Top * drawScale;
+            var drawWidth = drawBox.Width * drawScale;
+            var drawVerticalOffset = verticalOffset * drawScale;
 
             var globalBreakCounter = 0;
             var lineBreakIndex = 0;
-            var baseLine = drawBox.TopLeft + new Vector2(0, defaultFont.GetAscent(uiScale) + verticalOffset);
+            var currentLine = 0;
+            var baseLine = new Vector2(
+                drawLeft + GetLineOffset(currentLine),
+                drawTop + defaultFont.GetAscent(uiScale) + drawVerticalOffset);
             var controlYAdvance = 0f;
 
             var spaceRune = new Rune(' ');
@@ -259,12 +295,14 @@ namespace Robust.Client.UserInterface
 
                 foreach (var rune in text.EnumerateRunes())
                 {
-                    bool skipSpaceBaseline = false;
-
+                    var skipSpaceBaseline = false;
                     if (lineBreakIndex < LineBreaks.Count &&
                         LineBreaks[lineBreakIndex] == globalBreakCounter)
                     {
-                        baseLine = new Vector2(drawBox.Left, baseLine.Y + GetLineHeight(font, uiScale, lineHeightScale) + controlYAdvance);
+                        currentLine += 1;
+                        baseLine = new Vector2(
+                            drawLeft + GetLineOffset(currentLine),
+                            baseLine.Y + GetLineHeight(font, uiScale, lineHeightScale) + controlYAdvance);
                         controlYAdvance = 0;
                         lineBreakIndex += 1;
 
@@ -274,10 +312,16 @@ namespace Robust.Client.UserInterface
                             skipSpaceBaseline = true;
                     }
 
+                    if (!Rune.IsWhiteSpace(rune))
+                    {
+                        tagManager.DrawBeforeGlyph(handle, font, rune, baseLine, uiScale, context);
+                    }
+
                     var advance = font.DrawChar(handle, rune, baseLine, uiScale, color);
+                    var tracking = CurrentTracking(context);
 
                     if (!skipSpaceBaseline)
-                        baseLine += new Vector2(advance, 0);
+                        baseLine += new Vector2(advance + tracking, 0);
 
                     globalBreakCounter += 1;
                 }
@@ -300,6 +344,119 @@ namespace Robust.Client.UserInterface
                 var advanceX = control.DesiredPixelSize.X;
                 controlYAdvance = Math.Max(0f, (control.DesiredPixelSize.Y - GetLineHeight(font, uiScale, lineHeightScale)) * invertedScale);
                 baseLine += new Vector2(advanceX, 0);
+            }
+
+            float GetLineOffset(int line)
+            {
+                var lineWidth = line < lineWidths.Count ? lineWidths[line] : 0;
+                var lineAlign = line < lineAlignments.Count ? lineAlignments[line] : Label.AlignMode.Left;
+
+                return lineAlign switch
+                {
+                    Label.AlignMode.Left => 0f,
+                    Label.AlignMode.Center or Label.AlignMode.Fill => MathF.Max((drawWidth - lineWidth) / 2f, 0f),
+                    Label.AlignMode.Right => MathF.Max(drawWidth - lineWidth, 0f),
+                    _ => throw new ArgumentOutOfRangeException(nameof(lineAlign), lineAlign, null)
+                };
+            }
+        }
+
+        private void UpdateLineLayoutData(MarkupTagManager tagManager, Font defaultFont, float maxSizeX, float uiScale)
+        {
+            LineWidths.Clear();
+            LineAlignments.Clear();
+            LineWidths.Add(0);
+            LineAlignments.Add(Label.AlignMode.Left);
+
+            var context = new MarkupDrawingContext();
+            context.Color.Push(_defaultColor);
+            context.Font.Push(defaultFont);
+            context.Align.Push(Label.AlignMode.Left);
+            context.Tracking.Push(0f);
+
+            var globalBreakCounter = 0;
+            var lineBreakIndex = 0;
+            var lineIndex = 0;
+            var lineWidth = 0f;
+            var lineStarted = false;
+            var spaceRune = new Rune(' ');
+
+            var nodeIndex = -1;
+            foreach (var node in Message)
+            {
+                nodeIndex++;
+                var text = ProcessNode(tagManager, node, context);
+                if (!context.Font.TryPeek(out var font))
+                    font = defaultFont;
+
+                foreach (var rune in text.EnumerateRunes())
+                {
+                    var skipWrappedSpace = false;
+                    if (lineBreakIndex < LineBreaks.Count &&
+                        LineBreaks[lineBreakIndex] == globalBreakCounter)
+                    {
+                        LineWidths[lineIndex] = (int) MathF.Ceiling(lineWidth);
+                        lineIndex += 1;
+                        if (lineIndex >= LineWidths.Count)
+                        {
+                            LineWidths.Add(0);
+                            LineAlignments.Add(CurrentAlign(context));
+                        }
+
+                        lineWidth = 0f;
+                        lineStarted = false;
+                        lineBreakIndex += 1;
+
+                        if (rune == spaceRune)
+                            skipWrappedSpace = true;
+                    }
+
+                    if (skipWrappedSpace)
+                    {
+                        globalBreakCounter += 1;
+                        continue;
+                    }
+
+                    if (!lineStarted)
+                    {
+                        LineAlignments[lineIndex] = CurrentAlign(context);
+                        lineStarted = true;
+                    }
+
+                    if (font.TryGetCharMetrics(rune, uiScale, out var metrics))
+                        lineWidth += metrics.Advance + CurrentTracking(context);
+
+                    globalBreakCounter += 1;
+                }
+
+                if (Controls == null || !Controls.TryGetValue(nodeIndex, out var control))
+                    continue;
+
+                if (!lineStarted)
+                {
+                    LineAlignments[lineIndex] = CurrentAlign(context);
+                    lineStarted = true;
+                }
+
+                control.Measure(new Vector2(maxSizeX, Height));
+                lineWidth += control.DesiredPixelSize.X;
+            }
+
+            LineWidths[lineIndex] = (int) MathF.Ceiling(lineWidth);
+            return;
+
+            static Label.AlignMode CurrentAlign(MarkupDrawingContext context)
+            {
+                return context.Align.TryPeek(out var align)
+                    ? align
+                    : Label.AlignMode.Left;
+            }
+
+            static float CurrentTracking(MarkupDrawingContext context)
+            {
+                return context.Tracking.TryPeek(out var tracking)
+                    ? tracking
+                    : 0f;
             }
         }
 
@@ -327,6 +484,18 @@ namespace Robust.Client.UserInterface
         {
             var height = font.GetLineHeight(uiScale);
             return (int)(height * lineHeightScale);
+        }
+
+        private static float CurrentTracking(MarkupDrawingContext context)
+        {
+            return context.Tracking.TryPeek(out var tracking)
+                ? tracking
+                : 0f;
+        }
+
+        private static int CurrentTrackingPx(MarkupDrawingContext context)
+        {
+            return (int) MathF.Round(CurrentTracking(context));
         }
     }
 }

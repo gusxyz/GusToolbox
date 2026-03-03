@@ -1,5 +1,8 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
+using System.Text;
+using Robust.Client.Graphics;
 using Robust.Shared.Utility;
 
 namespace Robust.Client.UserInterface.RichText;
@@ -74,6 +77,17 @@ public interface IMarkupTagHandler
         control = null;
         return false;
     }
+}
+
+internal interface IMarkupGlyphTagHandler
+{
+    void DrawBeforeGlyph(
+        DrawingHandleBase handle,
+        Font font,
+        Rune rune,
+        Vector2 baseline,
+        float uiScale,
+        MarkupDrawingContext context);
 }
 
 [Obsolete("Use IMarkupTagHandler")]
